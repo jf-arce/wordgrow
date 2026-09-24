@@ -228,7 +228,7 @@ export function QuizRunner({
 
   return (
     <div className="flex flex-1 flex-col gap-6">
-      <header className="flex items-center gap-3 sm:gap-4">
+      <header className="flex flex-wrap items-center gap-3 sm:gap-4">
         <BackLink href={exitHref} label="Salir" className="btn-small shrink-0" />
         {firsts.length > 0 && (
           <button
@@ -240,7 +240,10 @@ export function QuizRunner({
             Ver anterior
           </button>
         )}
-        <div className="flex-1">
+        {/* En mobile pasa a su propia fila (order-last + basis-full) para no quedar pegada
+            al botón "Ver anterior"; en sm+ vuelve a compartir la fila con los botones, en el
+            mismo lugar de siempre (antes de los atajos). */}
+        <div className="order-last mt-1 basis-full sm:order-none sm:mt-0 sm:flex-1 sm:basis-auto">
           <div className="mb-1 flex items-center justify-between gap-2 text-xs font-semibold text-ink-soft">
             <span className="tabular-nums">
               {current} / {roundSize}
@@ -266,7 +269,11 @@ export function QuizRunner({
             />
           </div>
         </div>
-        <ShortcutsHelp />
+        {/* Los atajos de teclado no aplican en touch: se ocultan en mobile para liberar
+            espacio en el header. */}
+        <div className="order-last hidden sm:order-none sm:block">
+          <ShortcutsHelp />
+        </div>
       </header>
 
       {practice && <p className="text-sm font-semibold text-lilac-ink">Entrenamiento extra: no cambia tu calendario.</p>}
@@ -283,7 +290,10 @@ export function QuizRunner({
         initial={reduceMotion ? undefined : { opacity: 0, y: 24, scale: 0.96 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.22, ease: [0.2, 0.9, 0.3, 1] }}
-        className={clsx("flex flex-1 flex-col justify-start gap-6 pb-8", item.mode === "flashcard" ? "items-center pt-[4vh]" : "pt-[6vh]")}
+        className={clsx(
+          "flex flex-1 flex-col justify-start gap-6 pb-4 sm:pb-8",
+          item.mode === "flashcard" ? "items-center pt-[2vh] sm:pt-[4vh]" : "pt-[2vh] sm:pt-[6vh]",
+        )}
       >
         <div className={clsx("surface flex w-full max-w-3xl flex-col gap-3 p-5 sm:p-6", item.mode === "flashcard" && "mx-auto items-center text-center")}>
           <h1
