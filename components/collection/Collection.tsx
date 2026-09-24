@@ -1,4 +1,5 @@
 import { STAGES } from "@/lib/srs";
+import { FoxSilhouette } from "@/components/brand/FoxSilhouette";
 import { TiltedRankCard } from "./TiltedRankCard";
 
 /** Resumen de la colección: una carta por rango, con su cantidad real en el centro. */
@@ -15,6 +16,7 @@ export function Collection({ stages }: { stages: number[] }) {
           const content = (
             <>
               <div className="collection-rank-center">
+                <FoxSilhouette className="collection-rank-fox" />
                 <strong className="collection-rank-count tabular-nums">{count}</strong>
                 <span className="collection-rank-name">{count === 1 ? rank.name : rank.plural}</span>
               </div>

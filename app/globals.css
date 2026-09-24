@@ -176,6 +176,14 @@
   --font-sans: var(--font-body), ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-display), var(--font-body), ui-sans-serif, system-ui, sans-serif;
   --shadow-soft: var(--shadow);
+
+  /* Alias para componentes de components/evilcharts/ (registry EvilCharts, tokens
+     estilo shadcn): mapeados a los mismos slots de daisyUI de arriba, no a valores
+     nuevos, para que sigan el tema activo sin duplicar la paleta. */
+  --color-muted: var(--color-base-200);
+  --color-muted-foreground: color-mix(in oklab, var(--color-base-content) 65%, transparent);
+  --color-border: var(--color-base-300);
+  --color-background: var(--color-base-100);
 }
 
 /* ── Base ─────────────────────────────────────────────────── */
@@ -610,6 +618,18 @@ input:is([type="checkbox"], [type="radio"], [type="file"], [type="range"], [type
   font-size: clamp(2.5rem, 5vw, 3.5rem);
   line-height: 1;
 }
+.collection-rank-fox {
+  position: absolute;
+  inset: 4%;
+  z-index: 0;
+  color: var(--rank-ink);
+  opacity: 0.14;
+}
+.collection-rank-count,
+.collection-rank-name {
+  position: relative;
+  z-index: 1;
+}
 .collection-rank-center {
   border: 1px solid color-mix(in oklab, var(--rank-frame) 45%, transparent);
   border-radius: 0.625rem;
@@ -640,6 +660,20 @@ input:is([type="checkbox"], [type="radio"], [type="file"], [type="range"], [type
   height: 100%;
   border-radius: inherit;
   background: var(--rank-frame);
+  /* Crece desde 0 en el primer pintado, igual que el radial-progress de daisyUI en
+     GoalRing (que logra lo mismo con --property + transición de var custom). */
+  transition: width 0.6s ease-out;
+  @starting-style {
+    width: 0%;
+  }
+}
+/* Segmentos de components/ui/StageBar.tsx: mismo efecto de "crecer desde 0" que
+   .collection-rank-track de arriba. */
+.stage-bar-segment {
+  transition: width 0.6s ease-out;
+  @starting-style {
+    width: 0%;
+  }
 }
 .collection-rank-bottom { grid-row: 3; align-self: end; }
 .collection-rank-card:not(.collection-rank-0)::after {
@@ -717,7 +751,29 @@ input:is([type="checkbox"], [type="radio"], [type="file"], [type="range"], [type
   transform: rotate(-2deg);
 }
 .deck-stack-brand { align-self: flex-start; font-size: 0.62rem; font-weight: 900; letter-spacing: 0.08em; }
-.deck-stack-icon { width: 34%; height: auto; flex: 0 1 auto; }
+.fox-silhouette {
+  display: block;
+  pointer-events: none;
+  background-color: currentColor;
+  mask-size: contain;
+  mask-position: center;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: contain;
+  -webkit-mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+}
+.deck-stack-fox {
+  width: 44%;
+  aspect-ratio: 1;
+  flex: 0 1 auto;
+  opacity: 0.5;
+}
+.word-card-fox {
+  position: absolute;
+  inset: 12%;
+  z-index: 1;
+  opacity: 0.22;
+}
 .deck-stack-name {
   display: -webkit-box;
   max-width: 100%;
@@ -983,4 +1039,21 @@ input:is([type="checkbox"], [type="radio"], [type="file"], [type="range"], [type
       inset 0 1px 0 color-mix(in oklab, white 70%, transparent),
       0 12px 28px color-mix(in oklab, var(--rank-frame) 48%, transparent);
   }
+}
+
+/* Formas discretas: el contenedor conserva la geometría y sólo cambia la opacidad. */
+.loading-shape {
+  background: color-mix(in oklab, var(--color-base-content) 10%, var(--color-base-100));
+  animation: loading-breathe 2.4s ease-in-out infinite;
+}
+.loading-chart {
+  color: color-mix(in oklab, var(--color-base-content) 10%, var(--color-base-100));
+  animation: loading-breathe 2.4s ease-in-out infinite;
+}
+@keyframes loading-breathe {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .loading-shape, .loading-chart { animation: none; }
 }

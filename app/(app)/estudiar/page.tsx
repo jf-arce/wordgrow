@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { FoxMark } from "@/components/brand/FoxMark";
 import { listDecks } from "@/lib/db/queries/decks";
 import { countSourcesByDeck } from "@/lib/db/queries/study";
 import { getStudyPrefs, DEFAULT_STUDY_PREFS } from "@/lib/db/queries/settings";
@@ -31,7 +32,10 @@ export default async function StudyConfigPage({ searchParams }: PageProps<"/estu
         className="self-start"
       />
       <div>
-        <h1 className="text-4xl font-extrabold">Cómo estudiás</h1>
+        <div className="flex items-center gap-3">
+          <FoxMark size={48} />
+          <h1 className="text-4xl font-extrabold">Cómo estudiás</h1>
+        </div>
         <p className="mt-1 max-w-prose text-ink-soft">
           {explicitDeck
             ? `Elegí cómo estudiar ${explicitDeck.name}. Se guarda solo y también se usa desde el inicio.`

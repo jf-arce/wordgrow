@@ -3,7 +3,7 @@
 // pestaña/PWA sigue abierta (ver components/pwa/ReminderTimer.tsx). Queda anotado en
 // docs/ideas-futuras.md como mejora futura.
 
-const SHELL_CACHE = "wordgrow-shell-v1";
+const SHELL_CACHE = "wordgrow-shell-v2";
 const SHELL_URLS = ["/", "/manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {
@@ -30,8 +30,7 @@ self.addEventListener("message", (event) => {
   if (event.data?.type === "SHOW_REMINDER") {
     self.registration.showNotification(event.data.title ?? "WordGrow", {
       body: event.data.body ?? "Hoy te toca practicar.",
-      icon: "/icons/icon.svg",
-      badge: "/icons/icon.svg",
+      icon: "/icons/fox-192.png",
       tag: "wordgrow-reminder",
     });
   }
