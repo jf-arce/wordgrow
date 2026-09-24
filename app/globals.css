@@ -1,0 +1,967 @@
+@import "tailwindcss";
+@plugin "daisyui" {
+  themes: false;
+}
+
+/* ── Temas daisyUI ─────────────────────────────────────────
+   Paleta de cartas coleccionables: fondo cálido, el mismo dorado de "Grow" como
+   acento primario (botones, foco, progreso), violeta para cartas raras. Los slots
+   "primary/azure" quedan con ese nombre en el resto del código por compatibilidad;
+   el valor es dorado, no azul. */
+@plugin "daisyui/theme" {
+  name: "light";
+  default: true;
+  color-scheme: light;
+
+  --color-base-100: #ffffff;
+  --color-base-200: #e8eaee;
+  --color-base-300: #c7ccd6;
+  --color-base-content: #14181f;
+
+  --color-primary: #e3a730;
+  --color-primary-content: #241a00;
+  --color-secondary: #8b5cf6;
+  --color-secondary-content: #ede7fd;
+  --color-accent: #caa23a;
+  --color-accent-content: #6b5417;
+  --color-neutral: #14181f;
+  --color-neutral-content: #eef1f6;
+
+  --color-info: #2f9bd6;
+  --color-info-content: #dcf1fb;
+  --color-success: #2f9bd6;
+  --color-success-content: #dcf1fb;
+  --color-warning: #caa23a;
+  --color-warning-content: #6b5417;
+  --color-error: #c2410c;
+  --color-error-content: #fde4d5;
+
+  --radius-selector: 999px;
+  --radius-field: 0.75rem;
+  --radius-box: 1.25rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 2px;
+  --depth: 1;
+  --noise: 0;
+}
+
+@plugin "daisyui/theme" {
+  name: "dark";
+  prefersdark: true;
+  color-scheme: dark;
+
+  --color-base-100: #16191f;
+  --color-base-200: #0b0d10;
+  --color-base-300: #2e3542;
+  --color-base-content: #eef1f6;
+
+  --color-primary: #e8c159;
+  --color-primary-content: #1c1400;
+  --color-secondary: #b28bff;
+  --color-secondary-content: #2a2350;
+  --color-accent: #e8c159;
+  --color-accent-content: #3a2f10;
+  --color-neutral: #eef1f6;
+  --color-neutral-content: #14181f;
+
+  --color-info: #5fc2f0;
+  --color-info-content: #17303d;
+  --color-success: #5fc2f0;
+  --color-success-content: #17303d;
+  --color-warning: #e8c159;
+  --color-warning-content: #3a2f10;
+  --color-error: #f08a5d;
+  --color-error-content: #3a2010;
+
+  --radius-selector: 999px;
+  --radius-field: 0.75rem;
+  --radius-box: 1.25rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 2px;
+  --depth: 1;
+  --noise: 0;
+}
+
+/* ── Tokens propios (sin equivalente en daisyUI) ───────────
+   Respetan color-scheme del tema activo vía light-dark(), así que ya no hace
+   falta triplicar los valores para claro / oscuro / preferencia del sistema. */
+:root {
+  --focus: light-dark(#8f5f00, #f3d27e);
+  --shadow: light-dark(
+    0 1px 2px rgb(20 24 31 / 0.08), 0 8px 24px -12px rgb(20 24 31 / 0.18),
+    0 1px 2px rgb(0 0 0 / 0.5), 0 8px 24px -12px rgb(0 0 0 / 0.7), 0 0 0 1px rgb(232 193 89 / 0.08)
+  );
+  --btn-primary-relief: light-dark(#8f5f00, #f3d27e);
+
+  /* Rosa: se usa para el tipo de carta "idiom", separado de error/warning. */
+  --rose: light-dark(#c2416b, #ec7fa2);
+  --rose-soft: light-dark(#f9dde6, #3a1f29);
+
+  /* Tinta de badges "soft" (bg-*-soft + text-*-ink): no puede salir de *-content de
+     daisyUI, que da contraste para el color a pleno (bg-primary), no para su versión
+     tenue (bg-primary/soft) — usar esos alias invertía el contraste y dejaba los
+     badges casi invisibles en oscuro. Van con su propio light-dark(). */
+  --gold-ink: light-dark(#6b5417, #f3d27e);
+  --sky-ink: light-dark(#0a5279, #a6e0fc);
+  --lilac-ink: light-dark(#4c2f99, #d8c8ff);
+  --berry-ink: light-dark(#97300a, #f8b391);
+  --rose-ink: light-dark(#7a2a4d, #f4b8cd);
+
+  /* Texto sobre bg-berry A PLENO (no bg-berry-soft): berry-ink de arriba está pensado
+     para el fondo tenue y no alcanza 4.5:1 sobre el color a pleno. Usado en badges de
+     notificación y en el estado "incorrecto" de las opciones de quiz. */
+  --berry-strong-ink: light-dark(#ffffff, #3a2010);
+
+  /* Marcos de carta por rango: novato → aprendiz → hábil → especialista → experto. */
+  --frame-matte: light-dark(#aab0bd, #4a5163);
+  --frame-matte-ink: light-dark(#545b68, #b7bfcf);
+  --frame-bronze: light-dark(#b87947, #c98a53);
+  --frame-bronze-ink: light-dark(#7a4a26, #f0c9a3);
+  --frame-silver: light-dark(#9aa6b8, #7c8aa3);
+  --frame-silver-ink: light-dark(#4c5567, #d3dbea);
+  --frame-gold: light-dark(#d9ae3f, #e8c159);
+  --frame-gold-ink: light-dark(#7a5c12, #f6dfa0);
+  --frame-holo-1: light-dark(#a9eafa, #d2f6ff);
+  --frame-holo-2: light-dark(#79bdd3, #8ed8ee);
+  --frame-holo-3: light-dark(#3b94b1, #b4ecf8);
+  --frame-holo-blue: light-dark(#428bd5, #75baff);
+  --frame-holo-rose: light-dark(#ce6ca8, #f18fc4);
+  --frame-holo-mint: light-dark(#48bba9, #73ddca);
+  --frame-holo-gold: light-dark(#e1ab3e, #f0cc72);
+  --frame-metal-shadow: light-dark(#91a7b2, #263746);
+  --frame-metal-base: light-dark(#c1d0d7, #435a6a);
+  --frame-metal-highlight: light-dark(#f0f9fc, #5f7685);
+}
+
+@theme inline {
+  /* Alias de compatibilidad hacia los slots de daisyUI: el resto del código sigue
+     usando estos nombres de utilidad (bg-paper-2, text-ink-soft, bg-azure-soft…);
+     acá quedan resueltos a los tokens reales de daisyUI en vez de duplicar valores. */
+  --color-mist: var(--color-base-200);
+  --color-paper: var(--color-base-100);
+  --color-paper-2: var(--color-base-200);
+  --color-ink: var(--color-base-content);
+  --color-ink-soft: color-mix(in oklab, var(--color-base-content) 65%, transparent);
+  --color-line: var(--color-base-300);
+  --color-azure: var(--color-primary);
+  --color-azure-strong: var(--btn-primary-relief);
+  --color-azure-soft: color-mix(in oklab, var(--color-primary) 18%, var(--color-base-100));
+  --color-on-azure: var(--color-primary-content);
+  --color-gold: var(--color-accent);
+  --color-gold-soft: color-mix(in oklab, var(--color-accent) 18%, var(--color-base-100));
+  --color-gold-ink: var(--gold-ink);
+  --color-lilac: var(--color-secondary);
+  --color-lilac-soft: color-mix(in oklab, var(--color-secondary) 18%, var(--color-base-100));
+  --color-lilac-ink: var(--lilac-ink);
+  --color-sky: var(--color-info);
+  --color-sky-soft: color-mix(in oklab, var(--color-info) 18%, var(--color-base-100));
+  --color-sky-ink: var(--sky-ink);
+  --color-berry: var(--color-error);
+  --color-berry-soft: color-mix(in oklab, var(--color-error) 18%, var(--color-base-100));
+  --color-berry-ink: var(--berry-ink);
+  --color-berry-strong-ink: var(--berry-strong-ink);
+  --color-rose: var(--rose);
+  --color-rose-soft: var(--rose-soft);
+  --color-rose-ink: var(--rose-ink);
+  --color-frame-matte: var(--frame-matte);
+  --color-frame-matte-ink: var(--frame-matte-ink);
+  --color-frame-bronze: var(--frame-bronze);
+  --color-frame-bronze-ink: var(--frame-bronze-ink);
+  --color-frame-silver: var(--frame-silver);
+  --color-frame-silver-ink: var(--frame-silver-ink);
+  --color-frame-gold: var(--frame-gold);
+  --color-frame-gold-ink: var(--frame-gold-ink);
+  --font-sans: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-display), var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  --shadow-soft: var(--shadow);
+}
+
+/* ── Base ─────────────────────────────────────────────────── */
+html {
+  background: var(--color-base-200);
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--color-base-200);
+  color: var(--color-base-content);
+  font-family: var(--font-sans);
+  line-height: 1.55;
+  text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  letter-spacing: -0.015em;
+  text-wrap: balance;
+}
+
+p {
+  text-wrap: pretty;
+}
+
+:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+::selection {
+  background: var(--color-secondary);
+  color: #ffffff;
+}
+
+a[href],
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]),
+summary,
+label[for],
+label:has(input:not(:disabled)),
+select:not(:disabled),
+input:is([type="checkbox"], [type="radio"], [type="file"], [type="range"], [type="color"], [type="button"], [type="submit"], [type="reset"]):not(:disabled) {
+  cursor: pointer;
+}
+
+/* ── Componentes reutilizables ────────────────────────────── */
+@layer components {
+  /* El botón de daisyUI ya trae --depth (sombra sutil); acá se conserva el relieve
+     "de juego" de la versión anterior — 4px que se comprimen al presionar — porque
+     es parte de la identidad táctil de la app y --depth solo no lo reproduce. */
+  .btn {
+    border: 2px solid var(--color-base-content) !important;
+    border-radius: 0.65rem;
+    box-shadow: 4px 4px 0 var(--color-base-content) !important;
+    transition:
+      background-color 0.15s,
+      border-color 0.15s,
+      box-shadow 0.1s,
+      transform 0.1s !important;
+  }
+  .btn:active:not(:disabled) {
+    transform: translate(3px, 3px);
+    box-shadow: 1px 1px 0 var(--color-base-content) !important;
+  }
+  .btn-primary {
+    --btn-relief: var(--btn-primary-relief);
+  }
+  /* Alias hacia el vocabulario de daisyUI (btn-outline / btn-error / btn-lg / btn-sm)
+     para no tocar los ~25 archivos que ya usaban estos nombres de variante. */
+  .btn-quiet {
+    background: transparent;
+    color: var(--color-base-content);
+    border-color: var(--color-base-300);
+  }
+  .btn-quiet:hover:not(:disabled) {
+    background: var(--color-base-200);
+  }
+  .btn-danger {
+    background: transparent;
+    color: var(--color-error);
+    border-color: var(--color-error);
+  }
+  .btn-danger:hover:not(:disabled) {
+    background: color-mix(in oklab, var(--color-error) 12%, transparent);
+  }
+  .btn-large {
+    min-height: 3.5rem;
+    padding-inline: 1.75rem;
+    font-size: 1.125rem;
+  }
+  .btn-small {
+    min-height: 2.5rem;
+    padding: 0.25rem 0.9rem;
+    font-size: 0.9rem;
+  }
+
+  .surface {
+    background: var(--color-base-100);
+    border: 1px solid var(--color-base-300);
+    border-radius: 1rem;
+  }
+
+  /* Mismo look que los `input`/`select`/`textarea` de daisyUI (mismos tokens de
+     radio y borde), como una sola clase para no repetir el tag-specific de daisyUI
+     en los ~15 formularios que ya usaban esta clase. */
+  .field-input {
+    width: 100%;
+    min-height: 2.75rem;
+    border-radius: 0.55rem;
+    border: 2px solid var(--color-base-content);
+    background: var(--color-base-100);
+    color: var(--color-base-content);
+    padding: 0.5rem 0.85rem;
+    transition: border-color 0.15s;
+  }
+  .field-input::placeholder {
+    color: var(--color-base-content);
+    opacity: 0.55;
+  }
+  .field-input:hover {
+    border-color: color-mix(in oklab, var(--color-base-content) 40%, var(--color-base-300));
+  }
+  .field-input[aria-invalid="true"] {
+    border-color: var(--color-error);
+  }
+  textarea.field-input {
+    min-height: 5rem;
+    resize: vertical;
+  }
+
+  .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+/* Sin @layer a propósito: las reglas de daisyUI viven en la capa "utilities", que en
+   Tailwind v4 tiene más prioridad que "components" sin importar la especificidad —
+   meterla dentro de @layer components (como el resto de las clases de arriba) hacía
+   que daisyUI siguiera ganando. Fuera de cualquier capa, esta regla gana siempre.
+   Bug real de daisyUI en tema oscuro: `.btn:hover` recalcula --btn-bg a partir de
+   --btn-color (que btn-outline nunca define, cae al fallback base-200) y recién ahí
+   deriva --btn-border desde ese --btn-bg oscuro — el borde del outline termina casi
+   negro sobre un fondo casi negro y desaparece. */
+.btn-outline:hover:not(:disabled) {
+  --btn-border: var(--btn-color, var(--color-base-content));
+  --btn-bg: color-mix(in oklab, var(--btn-color, var(--color-base-content)) 12%, transparent);
+}
+
+/* ── Movimiento: solo respuestas a acciones ───────────────── */
+@keyframes impact {
+  0% {
+    transform: scale(0.2) translateY(12px);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.12) translateY(-2px);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) translateY(0);
+  }
+}
+@keyframes levelup-shine {
+  0% {
+    transform: translateX(-120%) skewX(-20deg);
+    opacity: 0;
+  }
+  40% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(120%) skewX(-20deg);
+    opacity: 0;
+  }
+}
+@keyframes rank-card-shine-loop {
+  0% {
+    transform: translateX(-120%) skewX(-20deg);
+    opacity: 0;
+  }
+  12% { opacity: 1; }
+  32% {
+    transform: translateX(120%) skewX(-20deg);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(120%) skewX(-20deg);
+    opacity: 0;
+  }
+}
+@keyframes levelup-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.15);
+  }
+}
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-5px);
+  }
+  75% {
+    transform: translateX(5px);
+  }
+}
+@keyframes flip-in {
+  from {
+    transform: rotateX(-70deg);
+    opacity: 0;
+  }
+  to {
+    transform: rotateX(0);
+    opacity: 1;
+  }
+}
+@keyframes streak-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.08);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .anim-impact {
+    animation: impact 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+    transform-origin: 50% 90%;
+  }
+  .anim-levelup {
+    animation: levelup-pulse 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+    transform-origin: 50% 50%;
+  }
+  .anim-levelup::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(100deg, transparent 40%, rgb(232 193 89 / 0.65) 50%, transparent 60%);
+    animation: levelup-shine 0.7s ease-out both;
+    pointer-events: none;
+  }
+  .anim-shake {
+    animation: shake 0.3s ease-in-out;
+  }
+  .anim-flip {
+    animation: flip-in 0.25s ease-out both;
+  }
+  .hp-fill {
+    transition: width 0.4s ease-out;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .anim-streak {
+    animation: streak-pulse 1.8s ease-in-out infinite;
+  }
+}
+
+/* ── Cartas coleccionables ─────────────────────────────────── */
+.collection-ranks {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+.collection-ranks > li { position: relative; display: flex; min-width: 0; }
+.collection-rank-slot-featured {
+  grid-column: 1 / -1;
+  width: calc((100% - 0.75rem) / 2);
+  justify-self: center;
+}
+@media (min-width: 640px) {
+  .collection-ranks { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .collection-rank-slot-featured { grid-column: auto; width: auto; justify-self: stretch; }
+}
+@media (min-width: 1024px) {
+  .collection-ranks { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+}
+.collection-rank-card,
+.word-card {
+  --rank-frame: var(--frame-matte);
+  --rank-ink: var(--frame-matte-ink);
+  --rank-plate: light-dark(#f1f3f6, #232a35);
+  --rank-metal-shadow: var(--frame-matte);
+  --rank-metal-highlight: light-dark(#d7dce4, #596473);
+}
+.collection-rank-card {
+  --tilt-x: 0deg;
+  --tilt-y: 0deg;
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-rows: 6rem 1fr auto;
+  width: 100%;
+  height: 11.5rem;
+  min-height: 11.5rem;
+  overflow: hidden;
+  border: 2px solid var(--rank-frame);
+  border-radius: 1rem;
+  padding: 0.75rem;
+  background: linear-gradient(155deg, color-mix(in oklab, var(--rank-frame) 20%, var(--color-paper)), var(--color-paper) 65%);
+  box-shadow: 0 4px 14px color-mix(in oklab, var(--rank-frame) 14%, transparent);
+  transform: perspective(900px) rotateX(var(--tilt-x)) rotateY(var(--tilt-y));
+}
+.collection-rank-1,
+.word-card.frame-bronze {
+  --rank-frame: var(--frame-bronze);
+  --rank-ink: light-dark(#211008, #fff0dd);
+  --rank-metal-shadow: light-dark(#a66c45, #39251d);
+  --rank-metal-base: light-dark(#d0a078, #68432f);
+  --rank-metal-highlight: light-dark(#f5d8b8, #82553a);
+  --rank-plate: light-dark(rgb(255 248 237 / 0.64), rgb(25 13 8 / 0.68));
+}
+.collection-rank-2,
+.word-card.frame-silver {
+  --rank-frame: var(--frame-silver);
+  --rank-ink: light-dark(#172735, #f1f7fa);
+  --rank-metal-shadow: light-dark(#95a5b1, #29323d);
+  --rank-metal-base: light-dark(#c9d3da, #445463);
+  --rank-metal-highlight: light-dark(#f4f9fc, #607181);
+  --rank-plate: light-dark(rgb(250 253 255 / 0.68), rgb(14 23 32 / 0.7));
+}
+.collection-rank-3,
+.word-card.frame-gold {
+  --rank-frame: var(--frame-gold);
+  --rank-ink: light-dark(#1d1404, #fff2ce);
+  --rank-metal-shadow: light-dark(#aa7d2a, #473615);
+  --rank-metal-base: light-dark(#d4b154, #735b24);
+  --rank-metal-highlight: light-dark(#ffecaf, #8b6d2b);
+  --rank-plate: light-dark(rgb(255 250 224 / 0.68), rgb(31 23 5 / 0.72));
+}
+.collection-rank-4,
+.word-card.frame-holo {
+  --rank-frame: var(--frame-holo-2);
+  --rank-ink: light-dark(#12384a, #f0faff);
+  --rank-metal-shadow: var(--frame-metal-shadow);
+  --rank-metal-base: var(--frame-metal-base);
+  --rank-metal-highlight: var(--frame-metal-highlight);
+  --rank-plate: light-dark(rgb(245 252 255 / 0.62), rgb(11 27 38 / 0.68));
+}
+.collection-rank-card:not(.collection-rank-0) {
+  background: linear-gradient(135deg,
+    var(--rank-metal-shadow) 0%,
+    var(--rank-metal-base) 17%,
+    var(--rank-metal-highlight) 29%,
+    var(--rank-metal-base) 40%,
+    var(--rank-metal-shadow) 53%,
+    var(--rank-metal-highlight) 71%,
+    var(--rank-metal-base) 84%,
+    var(--rank-metal-shadow) 100%);
+  box-shadow:
+    inset 0 1px 0 color-mix(in oklab, white 70%, transparent),
+    inset 0 -1px 0 color-mix(in oklab, var(--rank-metal-shadow) 70%, transparent),
+    0 4px 18px color-mix(in oklab, var(--rank-frame) 35%, transparent);
+}
+.collection-rank-card.collection-rank-4 {
+  border-color: transparent;
+  background:
+    linear-gradient(110deg,
+      transparent 12%,
+      color-mix(in oklab, var(--frame-holo-blue) 34%, transparent) 25%,
+      transparent 32%,
+      color-mix(in oklab, var(--frame-holo-rose) 42%, transparent) 44%,
+      color-mix(in oklab, var(--frame-holo-mint) 42%, transparent) 51%,
+      transparent 60%,
+      color-mix(in oklab, var(--frame-holo-gold) 35%, transparent) 76%,
+      transparent 85%) padding-box,
+    linear-gradient(135deg,
+      var(--rank-metal-shadow) 0%,
+      var(--rank-metal-base) 17%,
+      var(--rank-metal-highlight) 29%,
+      var(--rank-metal-base) 40%,
+      var(--rank-metal-shadow) 53%,
+      var(--rank-metal-highlight) 71%,
+      var(--rank-metal-base) 84%,
+      var(--rank-metal-shadow) 100%) padding-box,
+    conic-gradient(from 35deg,
+      var(--frame-holo-blue),
+      var(--frame-holo-rose),
+      var(--frame-holo-gold),
+      var(--frame-holo-mint),
+      var(--frame-holo-blue)) border-box;
+}
+.collection-rank-card::before {
+  content: "";
+  position: absolute;
+  inset: 0.3rem;
+  border: 1px solid color-mix(in oklab, var(--rank-metal-highlight) 70%, transparent);
+  border-radius: 0.7rem;
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--rank-metal-shadow) 25%, transparent);
+  pointer-events: none;
+}
+.collection-rank-bottom {
+  position: relative;
+  z-index: 2;
+  color: var(--rank-ink);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.collection-rank-center {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  grid-row: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.1rem;
+  padding-block: 0.25rem;
+  text-align: center;
+}
+.collection-rank-count {
+  color: var(--color-ink);
+  font-family: var(--font-display);
+  font-size: clamp(2.5rem, 5vw, 3.5rem);
+  line-height: 1;
+}
+.collection-rank-center {
+  border: 1px solid color-mix(in oklab, var(--rank-frame) 45%, transparent);
+  border-radius: 0.625rem;
+  background: var(--rank-plate);
+  box-shadow:
+    inset 0 1px 0 color-mix(in oklab, white 55%, transparent),
+    0 5px 14px rgb(9 29 42 / 0.16);
+}
+.collection-rank-0 .collection-rank-center {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.collection-rank-name {
+  color: var(--rank-ink);
+  font-size: 0.875rem;
+  font-weight: 800;
+}
+.collection-rank-track {
+  height: 0.35rem;
+  margin-top: 0.4rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--rank-frame) 20%, var(--color-paper));
+}
+.collection-rank-track > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--rank-frame);
+}
+.collection-rank-bottom { grid-row: 3; align-self: end; }
+.collection-rank-card:not(.collection-rank-0)::after {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 25%, color-mix(in oklab, var(--rank-frame) 32%, transparent) 46%, color-mix(in oklab, white 42%, transparent) 52%, transparent 74%);
+  opacity: 0;
+  pointer-events: none;
+}
+.collection-rank-4::after {
+  background: linear-gradient(105deg,
+    transparent 30%,
+    color-mix(in oklab, var(--frame-holo-blue) 65%, transparent) 43%,
+    color-mix(in oklab, var(--frame-holo-rose) 55%, transparent) 49%,
+    color-mix(in oklab, var(--frame-holo-mint) 60%, transparent) 54%,
+    color-mix(in oklab, var(--frame-holo-gold) 55%, transparent) 57%,
+    color-mix(in oklab, white 60%, transparent) 58%,
+    transparent 70%);
+}
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .collection-ranks > li:hover { z-index: 2; }
+  .collection-rank-card { transition: box-shadow 180ms ease; }
+  .collection-rank-0:hover {
+    box-shadow: 0 10px 22px color-mix(in oklab, var(--rank-frame) 25%, transparent);
+  }
+  .collection-rank-card:not(.collection-rank-0):hover::after { animation: rank-card-shine-loop 2.8s ease-out infinite; }
+  .collection-rank-4:hover::after { animation-duration: 3.2s; }
+  .collection-rank-card:not(.collection-rank-0):hover {
+    box-shadow:
+      inset 0 1px 0 color-mix(in oklab, white 70%, transparent),
+      0 12px 28px color-mix(in oklab, var(--rank-frame) 48%, transparent);
+  }
+}
+@media (hover: none), (prefers-reduced-motion: reduce) {
+  .collection-rank-card { transform: none !important; }
+}
+
+.deck-stack {
+  position: relative;
+  isolation: isolate;
+  flex: 0 0 auto;
+  width: clamp(5.25rem, 23vw, 8rem);
+  aspect-ratio: 5 / 7;
+  margin: 0.4rem 0.6rem 0.55rem 0.15rem;
+}
+.deck-stack-compact {
+  width: 4rem;
+  margin: 0.2rem 0.45rem 0.45rem 0;
+}
+.deck-stack-sheet,
+.deck-stack-cover {
+  position: absolute;
+  inset: 0;
+  border: 2px solid var(--color-base-content);
+  border-radius: 0.65rem;
+  box-shadow: 3px 3px 0 var(--color-base-content);
+  transition: transform 240ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.deck-stack-sheet {
+  background: var(--color-base-100);
+}
+.deck-stack-sheet-back { transform: translate(0.55rem, 0.3rem) rotate(5deg); }
+.deck-stack-sheet-middle { transform: translate(0.3rem, 0.2rem) rotate(2deg); }
+.deck-stack-cover {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.25rem;
+  padding: 0.5rem 0.35rem;
+  overflow: hidden;
+  text-align: center;
+  transform: rotate(-2deg);
+}
+.deck-stack-brand { align-self: flex-start; font-size: 0.62rem; font-weight: 900; letter-spacing: 0.08em; }
+.deck-stack-icon { width: 34%; height: auto; flex: 0 1 auto; }
+.deck-stack-name {
+  display: -webkit-box;
+  max-width: 100%;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow-wrap: anywhere;
+  font-family: var(--font-display);
+  font-size: clamp(0.7rem, 1.6vw, 0.88rem);
+  font-weight: 800;
+  line-height: 1.1;
+}
+.deck-stack-count { font-size: 0.59rem; font-weight: 700; line-height: 1.2; }
+.deck-stack-compact .deck-stack-cover { padding: 0.25rem; }
+.deck-stack-compact .deck-stack-brand { font-size: 0.48rem; }
+.deck-stack-compact .deck-stack-name { font-size: 0.58rem; }
+.deck-showcase {
+  border: 1px solid var(--color-base-300);
+  border-radius: 1rem;
+  background: var(--color-base-100);
+  transition: border-color 180ms ease, box-shadow 180ms ease;
+}
+.deck-option {
+  display: flex;
+  min-width: 0;
+  min-height: 10.5rem;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border: 1px solid var(--color-base-300);
+  border-radius: 0.75rem;
+  background: var(--color-base-100);
+  box-shadow: var(--shadow);
+  text-align: center;
+  transition: background-color 200ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+.deck-option-selected {
+  border: 2px solid var(--color-primary);
+  background: color-mix(in oklab, var(--color-primary) 22%, var(--color-base-100));
+}
+.deck-option-all { font-weight: 800; }
+.deck-option-row {
+  min-height: 7.5rem;
+  flex-direction: row;
+  justify-content: flex-start;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  text-align: left;
+}
+.dashboard-deck-choice {
+  width: 100%;
+  min-width: 0;
+  min-height: 4.25rem;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.5rem;
+  white-space: normal;
+  line-height: 1.1;
+  text-align: center;
+}
+@media (min-width: 480px) {
+  .dashboard-deck-choice { min-height: 3rem; flex-direction: row; gap: 0.5rem; }
+}
+.card-detail-panel {
+  width: min(56rem, calc(100vw - 2rem));
+  max-width: none;
+  max-height: calc(100dvh - 2rem);
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+@media (max-width: 639px) {
+  .card-detail-panel .hover-3d { max-width: 11rem; margin-inline: auto; }
+}
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .deck-showcase:hover, .deck-option:hover {
+    border-color: var(--color-primary);
+    box-shadow: 0 6px 18px color-mix(in oklab, var(--color-primary) 20%, transparent);
+  }
+  .deck-showcase:hover .deck-stack-sheet-back, .deck-option:hover .deck-stack-sheet-back { transform: translate(0.8rem, 0.45rem) rotate(10deg); }
+  .deck-showcase:hover .deck-stack-sheet-middle, .deck-option:hover .deck-stack-sheet-middle { transform: translate(0.4rem, 0.15rem) rotate(5deg); }
+  .deck-showcase:hover .deck-stack-cover, .deck-option:hover .deck-stack-cover { transform: translate(-0.1rem, -0.2rem) rotate(-5deg); }
+}
+.deck-showcase:focus-within, .deck-option:focus-visible {
+  border-color: var(--color-primary);
+  box-shadow: 0 6px 18px color-mix(in oklab, var(--color-primary) 20%, transparent);
+}
+.deck-showcase:focus-within .deck-stack-cover, .deck-option:focus-visible .deck-stack-cover { transform: translate(-0.1rem, -0.2rem) rotate(-5deg); }
+@media (prefers-reduced-motion: reduce) {
+  .deck-stack-sheet, .deck-stack-cover, .deck-showcase, .deck-option, .hover-3d > :first-child { transition-duration: 0.01ms !important; }
+  .hover-3d > :first-child { transform: none !important; }
+}
+
+@property --holo-x {
+  syntax: "<percentage>";
+  inherits: true;
+  initial-value: 50%;
+}
+@property --holo-y {
+  syntax: "<percentage>";
+  inherits: true;
+  initial-value: 50%;
+}
+
+.card-frame {
+  --tilt-x: 0deg;
+  --tilt-y: 0deg;
+  position: relative;
+  border-radius: 1rem;
+  border: 3px solid var(--frame-color, var(--frame-matte));
+  background: var(--color-base-100);
+  box-shadow: var(--shadow);
+  transform: perspective(900px) rotateX(var(--tilt-x)) rotateY(var(--tilt-y));
+  transform-style: preserve-3d;
+}
+.word-card {
+  isolation: isolate;
+  box-shadow: 0 4px 14px color-mix(in oklab, var(--rank-frame) 14%, transparent);
+}
+.word-card-surface {
+  position: relative;
+  z-index: 1;
+  border: 1px solid color-mix(in oklab, var(--rank-frame) 45%, transparent);
+  background: var(--rank-plate);
+  box-shadow: inset 0 1px 0 color-mix(in oklab, white 55%, transparent);
+}
+.word-card.frame-matte .word-card-surface {
+  border: 0;
+  background: var(--color-base-100);
+  box-shadow: none;
+}
+.word-card:not(.frame-matte) {
+  background: linear-gradient(135deg,
+    var(--rank-metal-shadow) 0%,
+    var(--rank-metal-base) 17%,
+    var(--rank-metal-highlight) 29%,
+    var(--rank-metal-base) 40%,
+    var(--rank-metal-shadow) 53%,
+    var(--rank-metal-highlight) 71%,
+    var(--rank-metal-base) 84%,
+    var(--rank-metal-shadow) 100%);
+  box-shadow:
+    inset 0 1px 0 color-mix(in oklab, white 70%, transparent),
+    inset 0 -1px 0 color-mix(in oklab, var(--rank-metal-shadow) 70%, transparent),
+    0 4px 18px color-mix(in oklab, var(--rank-frame) 35%, transparent);
+}
+.card-frame.frame-matte {
+  --frame-color: var(--frame-matte);
+}
+.card-frame.frame-bronze {
+  --frame-color: var(--frame-bronze);
+}
+.card-frame.frame-silver {
+  --frame-color: var(--frame-silver);
+}
+.card-frame.frame-gold {
+  --frame-color: var(--frame-gold);
+}
+.card-frame.frame-gold:not(.word-card) {
+  box-shadow:
+    var(--shadow),
+    0 0 0 1px color-mix(in oklab, var(--frame-gold) 60%, transparent);
+}
+.card-frame.frame-holo {
+  --frame-color: var(--frame-holo-3);
+}
+.card-frame.frame-holo:not(.word-card) {
+  box-shadow: var(--shadow), 0 0 18px color-mix(in oklab, var(--frame-holo-2) 25%, transparent);
+}
+.word-card.frame-holo {
+  border-color: transparent;
+  background:
+    linear-gradient(110deg,
+      transparent 12%,
+      color-mix(in oklab, var(--frame-holo-blue) 34%, transparent) 25%,
+      transparent 32%,
+      color-mix(in oklab, var(--frame-holo-rose) 42%, transparent) 44%,
+      color-mix(in oklab, var(--frame-holo-mint) 42%, transparent) 51%,
+      transparent 60%,
+      color-mix(in oklab, var(--frame-holo-gold) 35%, transparent) 76%,
+      transparent 85%) padding-box,
+    linear-gradient(135deg,
+      var(--rank-metal-shadow) 0%,
+      var(--rank-metal-base) 17%,
+      var(--rank-metal-highlight) 29%,
+      var(--rank-metal-base) 40%,
+      var(--rank-metal-shadow) 53%,
+      var(--rank-metal-highlight) 71%,
+      var(--rank-metal-base) 84%,
+      var(--rank-metal-shadow) 100%) padding-box,
+    conic-gradient(from 35deg,
+      var(--frame-holo-blue),
+      var(--frame-holo-rose),
+      var(--frame-holo-gold),
+      var(--frame-holo-mint),
+      var(--frame-holo-blue)) border-box;
+}
+.word-card:not(.frame-matte)::after {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 25%, color-mix(in oklab, var(--rank-frame) 32%, transparent) 46%, color-mix(in oklab, white 42%, transparent) 52%, transparent 74%);
+  opacity: 0;
+  pointer-events: none;
+}
+.word-card.frame-holo::after {
+  background: linear-gradient(105deg,
+    transparent 30%,
+    color-mix(in oklab, var(--frame-holo-blue) 65%, transparent) 43%,
+    color-mix(in oklab, var(--frame-holo-rose) 55%, transparent) 49%,
+    color-mix(in oklab, var(--frame-holo-mint) 60%, transparent) 54%,
+    color-mix(in oklab, var(--frame-holo-gold) 55%, transparent) 57%,
+    color-mix(in oklab, white 60%, transparent) 58%,
+    transparent 70%);
+}
+.word-card-surface > p:first-child { color: var(--rank-ink); }
+.word-card-surface > div:last-child > div { border-color: color-mix(in oklab, var(--rank-frame) 40%, transparent); }
+.card-frame.due::before {
+  content: "";
+  position: absolute;
+  top: 0.4rem;
+  right: 0.4rem;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 999px;
+  background: var(--color-error);
+  box-shadow: 0 0 0 2px var(--color-base-100);
+  z-index: 3;
+}
+
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .card-tilt {
+    transition: transform 0.1s ease-out;
+  }
+  .word-card:not(.frame-matte):hover::after,
+  .hover-3d:hover .word-card:not(.frame-matte)::after { animation: rank-card-shine-loop 2.8s ease-out infinite; }
+  .word-card.frame-holo:hover::after,
+  .hover-3d:hover .word-card.frame-holo::after { animation-duration: 3.2s; }
+  .word-card:not(.frame-matte):hover,
+  .hover-3d:hover .word-card:not(.frame-matte) {
+    box-shadow:
+      inset 0 1px 0 color-mix(in oklab, white 70%, transparent),
+      0 12px 28px color-mix(in oklab, var(--rank-frame) 48%, transparent);
+  }
+}

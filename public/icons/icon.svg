@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#16191f"/>
+  <rect x="16" y="16" width="480" height="480" rx="84" fill="none" stroke="#e8c159" stroke-width="10"/>
+  <text x="256" y="300" font-family="Georgia, 'Times New Roman', serif" font-size="220" font-weight="800"
+        text-anchor="middle" fill="#eef1f6">W<tspan fill="#e8c159">G</tspan></text>
+</svg>
