@@ -16,14 +16,20 @@ WordGrow es una app para estudiar vocabulario con mazos propios y repaso espacia
 
 ## Inicio rápido
 
-Necesitás Node.js 24 o posterior y npm. La app usa `node:sqlite`, incluido en Node.js.
+Necesitás Node.js 24 o posterior, npm y una base de datos Postgres en [Neon](https://neon.tech) (tiene un plan gratuito).
+
+Creá un proyecto en Neon y copiá `.env.example` a `.env` con sus dos connection strings: `DATABASE_URL` (pooled, la usa la app) y `DIRECT_URL` (directa, la usan las migraciones).
 
 ```bash
 npm install
+npm run db:migrate
+npm run db:seed
 npm run dev
 ```
 
-Abrí [http://localhost:3000](http://localhost:3000), registrá una cuenta y creá un mazo o agregá el mazo de ejemplo. También podés importar una lista desde la página de un mazo. Por ejemplo:
+`db:seed` crea dos cuentas de prueba: `demo@wordgrow.dev` (con mazos, cartas en distintos rangos y una racha de repasos) y `nuevo@wordgrow.dev` (sin mazos, para probar la bienvenida). Ambas usan la contraseña `wordgrow123`.
+
+Abrí [http://localhost:3000](http://localhost:3000) y entrá con alguna de esas cuentas, o registrá la tuya y creá un mazo o agregá el mazo de ejemplo. También podés importar una lista desde la página de un mazo. Por ejemplo:
 
 ```text
 give up - rendirse
@@ -35,13 +41,7 @@ La importación admite tabulaciones, punto y coma, comas, ` - ` o ` = ` como sep
 
 ## Datos y backups
 
-La base SQLite se crea automáticamente en `data/wordgrow.db`. Esa carpeta está ignorada por git. Para usar otra ubicación, definí `WORDGROW_DB` con la ruta completa del archivo:
-
-```bash
-WORDGROW_DB=/ruta/wordgrow.db npm run dev
-```
-
-Los datos quedan en la computadora donde corre el servidor. En **Ajustes** podés descargar un backup JSON de tu cuenta o restaurarlo. La restauración reemplaza los mazos, el progreso, el historial y los ajustes de esa cuenta.
+Los datos viven en Postgres (Neon), no en la máquina donde corre el servidor. En **Ajustes** podés descargar un backup JSON de tu cuenta o restaurarlo. La restauración reemplaza los mazos, el progreso, el historial y los ajustes de esa cuenta.
 
 ## Comandos
 
@@ -50,12 +50,17 @@ Los datos quedan en la computadora donde corre el servidor. En **Ajustes** podé
 | `npm run dev` | Inicia el servidor de desarrollo. |
 | `npm run build` | Genera la versión de producción. |
 | `npm start` | Sirve la versión de producción después de `build`. |
-| `npm test` | Ejecuta las pruebas con Vitest. |
+| `npm test` | Ejecuta las pruebas con Vitest (contra el branch de Neon de `.env.test`). |
 | `npm run lint` | Ejecuta ESLint. |
+| `npm run db:migrate` | Aplica las migraciones de Prisma en desarrollo. |
+| `npm run db:deploy` | Aplica las migraciones pendientes en producción. |
+| `npm run db:seed` | Recrea las cuentas de prueba. |
+| `npm run db:reset` | Borra todo y vuelve a aplicar las migraciones. |
+| `npm run db:studio` | Abre Prisma Studio para explorar la base. |
 
 ## Stack
 
-Next.js 16 (App Router, Server Actions y Proxy), React 19, TypeScript, Tailwind CSS 4, React Hook Form, Zod y SQLite (`node:sqlite`).
+Next.js 16 (App Router, Server Actions y Proxy), React 19, TypeScript, Tailwind CSS 4, React Hook Form, Zod, Prisma y PostgreSQL (Neon).
 
 ## Limitaciones y próximos pasos
 
