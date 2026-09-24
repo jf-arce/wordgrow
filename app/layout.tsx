@@ -1,8 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Atkinson_Hyperlegible_Next, Bricolage_Grotesque } from "next/font/google";
-import { connection } from "next/server";
-import { getSettings, DEFAULT_SETTINGS } from "@/lib/db/queries/settings";
-import { getCurrentUser } from "@/lib/auth/dal";
+import { cookies } from "next/headers";
 import "./globals.css";
 
 const display = Bricolage_Grotesque({
@@ -31,12 +29,15 @@ export const viewport: Viewport = {
 };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
-  // El tema vive en la base de datos (lectura sincrónica), así que la página no se prerenderiza.
-  await connection();
-  // Sin sesión (páginas de /ingresar y /registro) se usa el tema por defecto: acá nunca se
-  // exige login, para no generar un redirect en bucle contra esas mismas páginas.
-  const user = await getCurrentUser();
-  const { theme } = user ? await getSettings(user.id) : DEFAULT_SETTINGS;
+  // El tema vive en la base de datos (Ajustes), pero acá se lee de una cookie que
+  // `saveSettingsAction` mantiene sincronizada: el <html data-theme> tiene que salir
+  // antes del primer paint (no se puede Suspender un atributo), y esperar a Neon para
+  // eso dejaba la pantalla en negro hasta que respondía. Leer la cookie sigue forzando
+  // el render dinámico (igual que antes con `connection()`), pero sin ida y vuelta a la
+  // base. Sin cookie (primera visita) se usa "system", el mismo default que la DB.
+  const jar = await cookies();
+  const cookieTheme = jar.get("wg_theme")?.value;
+  const theme = cookieTheme === "light" || cookieTheme === "dark" ? cookieTheme : "system";
 
   return (
     <html

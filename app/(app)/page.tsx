@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Play, TriangleAlert } from "lucide-react";
 import { listDecks } from "@/lib/db/queries/decks";
 import { getStudyPrefs, getReminderPrefs } from "@/lib/db/queries/settings";
-import { todaySummary, studyFocus, weekActivity } from "@/lib/db/queries/stats";
+import { todaySummaryCached, studyFocus, weekActivity } from "@/lib/db/queries/stats";
 import { countSourcesByDeck } from "@/lib/db/queries/study";
 import { activeSessionSummary, resolveStudyHref } from "@/lib/db/queries/session";
 import { sessionHref } from "@/lib/study";
@@ -19,7 +19,7 @@ export const metadata = { title: "Estudiar" };
 export default async function TodayPage() {
   const user = await requireUser();
   const [today, prefs, decks, countsByDeck, focus, week, active, studyHref, reminderPrefs] = await Promise.all([
-    todaySummary(user.id),
+    todaySummaryCached(user.id),
     getStudyPrefs(user.id),
     listDecks(user.id),
     countSourcesByDeck(user.id),

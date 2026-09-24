@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { prisma } from "../index";
 import { bestStreak, computeStreak, dayKey } from "@/lib/streak";
 import { MAX_STAGE } from "@/lib/srs";
@@ -61,6 +62,11 @@ export async function todaySummary(userId: number, now = Date.now()): Promise<To
     stages,
   };
 }
+
+/** `todaySummary` memoizada por request con `cache()` de React: el dashboard y los
+ * fragmentos suspendidos del shell de `AppLayout` (racha, meta, badge de pendientes)
+ * la piden por separado, pero es la misma consulta — sin esto se repetiría por cada uno. */
+export const todaySummaryCached = cache(todaySummary);
 
 export type StatsData = {
   totalReviews: number;
