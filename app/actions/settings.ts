@@ -11,7 +11,7 @@ export async function saveSettingsAction(input: unknown): Promise<ActionResult> 
   const user = await requireUser();
   const parsed = settingsSchema.safeParse(input);
   if (!parsed.success) return fail(parsed.error.issues[0].message);
-  saveSettings(user.id, parsed.data);
+  await saveSettings(user.id, parsed.data);
   revalidatePath("/", "layout");
   return done(undefined);
 }
@@ -20,8 +20,11 @@ export async function saveStudyPrefsAction(input: unknown): Promise<ActionResult
   const user = await requireUser();
   const parsed = studyPrefsSchema.safeParse(input);
   if (!parsed.success) return fail("Revisá la configuración de estudio.");
-  if (parsed.data.deckScope === "selected" && parsed.data.deckIds.some((id) => !userOwnsDeck(user.id, id))) return fail("Uno de los mazos ya no está disponible.");
-  saveStudyPrefs(user.id, parsed.data);
+  if (parsed.data.deckScope === "selected") {
+    const owns = await Promise.all(parsed.data.deckIds.map((id) => userOwnsDeck(user.id, id)));
+    if (owns.some((ok) => !ok)) return fail("Uno de los mazos ya no está disponible.");
+  }
+  await saveStudyPrefs(user.id, parsed.data);
   // El botón "Estudiar" del inicio resuelve la sesión con estas prefs
   // (`resolveStudyHref`); sin revalidar, un cambio de mazos desde el acceso rápido del
   // dashboard no se refleja ahí hasta la próxima recarga completa.
@@ -33,7 +36,7 @@ export async function saveReminderPrefsAction(input: unknown): Promise<ActionRes
   const user = await requireUser();
   const parsed = reminderPrefsSchema.safeParse(input);
   if (!parsed.success) return fail(parsed.error.issues[0].message);
-  saveReminderPrefs(user.id, parsed.data);
+  await saveReminderPrefs(user.id, parsed.data);
   revalidatePath("/", "layout");
   return done(undefined);
 }

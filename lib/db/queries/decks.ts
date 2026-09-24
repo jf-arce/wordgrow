@@ -1,5 +1,5 @@
 import "server-only";
-import { getDb } from "../index";
+import { prisma } from "../index";
 import type { DeckInput } from "@/lib/schemas";
 import { MAX_STAGE } from "@/lib/srs";
 
@@ -16,84 +16,76 @@ export type DeckSummary = {
   stages: number[];
 };
 
-type DeckRow = Omit<DeckSummary, "stages" | "total" | "due" | "mastered"> & {
-  total: number;
-  due: number;
-  mastered: number;
-};
+export async function listDecks(userId: number, now = Date.now()): Promise<DeckSummary[]> {
+  const decks = await prisma.deck.findMany({
+    where: { userId },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    select: {
+      id: true,
+      name: true,
+      description: true,
+      color: true,
+      lang: true,
+      cards: { select: { progress: { select: { stage: true, dueAt: true } } } },
+    },
+  });
 
-export function listDecks(userId: number, now = Date.now()): DeckSummary[] {
-  const db = getDb();
-  const decks = db
-    .prepare(
-      `SELECT d.id, d.name, d.description, d.color, d.lang,
-              COUNT(c.id) AS total,
-              COALESCE(SUM(p.due_at <= ?), 0) AS due,
-              COALESCE(SUM(p.stage = ${MAX_STAGE}), 0) AS mastered
-       FROM decks d
-       LEFT JOIN cards c ON c.deck_id = d.id
-       LEFT JOIN card_progress p ON p.card_id = c.id
-       WHERE d.user_id = ?
-       GROUP BY d.id
-       ORDER BY d.created_at DESC, d.id DESC`,
-    )
-    .all(now, userId) as DeckRow[];
-
-  const stageRows = db
-    .prepare(
-      `SELECT c.deck_id AS deck_id, p.stage AS stage, COUNT(*) AS n
-       FROM cards c JOIN card_progress p ON p.card_id = c.id
-       JOIN decks d ON d.id = c.deck_id
-       WHERE d.user_id = ?
-       GROUP BY c.deck_id, p.stage`,
-    )
-    .all(userId) as { deck_id: number; stage: number; n: number }[];
-
-  const byDeck = new Map<number, number[]>();
-  for (const r of stageRows) {
-    const arr = byDeck.get(r.deck_id) ?? Array(MAX_STAGE + 1).fill(0);
-    arr[r.stage] = r.n;
-    byDeck.set(r.deck_id, arr);
-  }
-
-  return decks.map((d) => ({ ...d, stages: byDeck.get(d.id) ?? Array(MAX_STAGE + 1).fill(0) }));
+  return decks.map((d) => {
+    const stages = Array(MAX_STAGE + 1).fill(0);
+    let due = 0;
+    let mastered = 0;
+    for (const card of d.cards) {
+      if (!card.progress) continue;
+      stages[card.progress.stage]++;
+      if (card.progress.dueAt.getTime() <= now) due++;
+      if (card.progress.stage === MAX_STAGE) mastered++;
+    }
+    return {
+      id: d.id,
+      name: d.name,
+      description: d.description,
+      color: d.color,
+      lang: d.lang,
+      total: d.cards.length,
+      due,
+      mastered,
+      stages,
+    };
+  });
 }
 
-export function getDeck(userId: number, id: number): DeckSummary | null {
-  return listDecks(userId).find((d) => d.id === id) ?? null;
+export async function getDeck(userId: number, id: number): Promise<DeckSummary | null> {
+  const decks = await listDecks(userId);
+  return decks.find((d) => d.id === id) ?? null;
 }
 
 /** Verifica que el mazo exista y sea del usuario, para no dejar tocar tarjetas ajenas por id. */
-export function userOwnsDeck(userId: number, deckId: number): boolean {
-  const row = getDb().prepare("SELECT 1 FROM decks WHERE id = ? AND user_id = ?").get(deckId, userId);
-  return !!row;
+export async function userOwnsDeck(userId: number, deckId: number): Promise<boolean> {
+  const count = await prisma.deck.count({ where: { id: deckId, userId } });
+  return count > 0;
 }
 
 /** Igual que `userOwnsDeck`, pero a partir del id de una tarjeta (para acciones sobre cartas sueltas). */
-export function userOwnsCard(userId: number, cardId: number): boolean {
-  const row = getDb()
-    .prepare("SELECT 1 FROM cards c JOIN decks d ON d.id = c.deck_id WHERE c.id = ? AND d.user_id = ?")
-    .get(cardId, userId);
-  return !!row;
+export async function userOwnsCard(userId: number, cardId: number): Promise<boolean> {
+  const count = await prisma.card.count({ where: { id: cardId, deck: { userId } } });
+  return count > 0;
 }
 
-export function createDeck(userId: number, input: DeckInput): number {
-  const now = Date.now();
-  const res = getDb()
-    .prepare(
-      `INSERT INTO decks (name, description, color, lang, user_id, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    )
-    .run(input.name, input.description, input.color, input.lang, userId, now, now);
-  return Number(res.lastInsertRowid);
+export async function createDeck(userId: number, input: DeckInput): Promise<number> {
+  const deck = await prisma.deck.create({
+    data: { userId, name: input.name, description: input.description, color: input.color, lang: input.lang },
+    select: { id: true },
+  });
+  return deck.id;
 }
 
-export function updateDeck(userId: number, id: number, input: DeckInput): void {
-  getDb()
-    .prepare(`UPDATE decks SET name = ?, description = ?, color = ?, lang = ?, updated_at = ? WHERE id = ? AND user_id = ?`)
-    .run(input.name, input.description, input.color, input.lang, Date.now(), id, userId);
+export async function updateDeck(userId: number, id: number, input: DeckInput): Promise<void> {
+  await prisma.deck.updateMany({
+    where: { id, userId },
+    data: { name: input.name, description: input.description, color: input.color, lang: input.lang },
+  });
 }
 
-export function deleteDeck(userId: number, id: number): void {
-  getDb().prepare("DELETE FROM decks WHERE id = ? AND user_id = ?").run(id, userId);
+export async function deleteDeck(userId: number, id: number): Promise<void> {
+  await prisma.deck.deleteMany({ where: { id, userId } });
 }

@@ -16,7 +16,7 @@ function hashToken(token: string): string {
 export async function startSession(userId: number): Promise<void> {
   const token = randomBytes(32).toString("base64url");
   const expiresAt = Date.now() + SESSION_MS;
-  createSession({ id: hashToken(token), userId, expiresAt });
+  await createSession({ id: hashToken(token), userId, expiresAt });
 
   const store = await cookies();
   store.set(SESSION_COOKIE, token, {
@@ -34,17 +34,17 @@ export async function readSession(): Promise<number | null> {
   const token = store.get(SESSION_COOKIE)?.value;
   if (!token) return null;
 
-  const session = getSession(hashToken(token));
+  const session = await getSession(hashToken(token));
   if (!session) return null;
 
   const expiresAt = Date.now() + SESSION_MS;
-  touchSession(hashToken(token), expiresAt);
+  await touchSession(hashToken(token), expiresAt);
   return session.userId;
 }
 
 export async function endSession(): Promise<void> {
   const store = await cookies();
   const token = store.get(SESSION_COOKIE)?.value;
-  if (token) deleteSession(hashToken(token));
+  if (token) await deleteSession(hashToken(token));
   store.delete(SESSION_COOKIE);
 }

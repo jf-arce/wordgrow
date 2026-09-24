@@ -1,0 +1,196 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum CardKind {
+  word
+  phrasal_verb
+  collocation
+  sentence
+  other
+}
+
+enum QuizMode {
+  choice
+  reverse
+  typed
+  cloze
+  flashcard
+}
+
+enum StudyMode {
+  mixed
+  choice
+  reverse
+  typed
+  cloze
+  flashcard
+}
+
+enum StudySource {
+  due
+  all
+  hard
+  new
+}
+
+enum ReviewGrade {
+  correct
+  unsure
+  wrong
+}
+
+enum ThemePref {
+  system
+  light
+  dark
+}
+
+enum DeckScope {
+  all
+  selected
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  firstName    String   @map("first_name")
+  lastName     String   @map("last_name")
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  sessions      Session[]
+  decks         Deck[]
+  settings      UserSettings?
+  studySessions StudySession[]
+
+  @@map("users")
+}
+
+model Session {
+  /** Hash sha256 del token de sesión; el token nunca se guarda. */
+  id           String   @id
+  userId       Int      @map("user_id")
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  expiresAt    DateTime @map("expires_at") @db.Timestamptz(3)
+  lastSeenAt   DateTime @map("last_seen_at") @db.Timestamptz(3)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+model Deck {
+  id          Int      @id @default(autoincrement())
+  userId      Int      @map("user_id")
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  description String   @default("")
+  color       String   @default("leaf")
+  lang        String   @default("en-US")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  cards Card[]
+
+  @@index([userId, createdAt])
+  @@map("decks")
+}
+
+model Card {
+  id        Int      @id @default(autoincrement())
+  deckId    Int      @map("deck_id")
+  deck      Deck     @relation(fields: [deckId], references: [id], onDelete: Cascade)
+  term      String
+  meaning   String
+  example   String   @default("")
+  notes     String   @default("")
+  kind      CardKind @default(word)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  progress CardProgress?
+  reviews  Review[]
+
+  @@unique([deckId, term])
+  @@index([deckId])
+  @@map("cards")
+}
+
+model CardProgress {
+  cardId         Int       @id @map("card_id")
+  card           Card      @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  stage          Int       @default(0)
+  dueAt          DateTime  @map("due_at") @db.Timestamptz(3)
+  reps           Int       @default(0)
+  lapses         Int       @default(0)
+  lastReviewedAt DateTime? @map("last_reviewed_at") @db.Timestamptz(3)
+
+  @@index([dueAt])
+  @@map("card_progress")
+}
+
+model Review {
+  id          Int         @id @default(autoincrement())
+  cardId      Int         @map("card_id")
+  card        Card        @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  mode        QuizMode
+  correct     Boolean
+  grade       ReviewGrade
+  responseMs  Int         @default(0) @map("response_ms")
+  reviewedAt  DateTime    @map("reviewed_at") @db.Timestamptz(3)
+
+  @@index([reviewedAt])
+  @@index([cardId])
+  @@map("reviews")
+}
+
+model UserSettings {
+  userId Int  @id @map("user_id")
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  dailyGoal     Int     @default(20) @map("daily_goal")
+  ttsRate       Float   @default(0.9) @map("tts_rate")
+  autoplayAudio Boolean @default(false) @map("autoplay_audio")
+  theme         ThemePref @default(system)
+  ttsVoice      String  @default("") @map("tts_voice")
+
+  studySource    StudySource @default(due) @map("study_source")
+  studyMode      StudyMode   @default(mixed) @map("study_mode")
+  studyLimit     Int         @default(20) @map("study_limit")
+  studyDeckScope DeckScope   @default(all) @map("study_deck_scope")
+  studyDeckIds   Int[]       @default([]) @map("study_deck_ids")
+
+  reminderEnabled Boolean  @default(false) @map("reminder_enabled")
+  /** Lunes a viernes por defecto. */
+  reminderDays    Int[]    @default([1, 2, 3, 4, 5]) @map("reminder_days")
+  reminderTime    String   @default("19:00") @map("reminder_time")
+
+  @@map("user_settings")
+}
+
+model StudySession {
+  id            Int       @id @default(autoincrement())
+  userId        Int       @map("user_id")
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /** Vacío = todos los mazos. */
+  deckIds       Int[]     @map("deck_ids")
+  source        StudySource
+  mode          StudyMode
+  limit         Int
+  items         Json
+  answers       Json
+  currentAnswer Json?     @map("current_answer")
+  position      Int       @default(0)
+  startedAt     DateTime  @default(now()) @map("started_at") @db.Timestamptz(3)
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  finishedAt    DateTime? @map("finished_at") @db.Timestamptz(3)
+
+  @@index([userId, finishedAt])
+  @@map("study_sessions")
+}

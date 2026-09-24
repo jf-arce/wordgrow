@@ -1,11 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-process.env.WORDGROW_DB = ":memory:";
-
 const { hashPassword, verifyPassword } = await import("@/lib/auth/password");
-const { createUser, getUserByEmail, createSession, getSession, deleteSession, hasAnyUser } = await import(
-  "@/lib/db/queries/auth"
-);
+const { createUser, getUserByEmail, createSession, getSession, deleteSession } = await import("@/lib/db/queries/auth");
 
 describe("contraseñas", () => {
   it("verifica una contraseña correcta y rechaza una incorrecta", () => {
@@ -34,46 +30,44 @@ describe("contraseñas", () => {
 });
 
 describe("usuarios", () => {
-  it("crea un usuario y lo encuentra por email, sin importar mayúsculas", () => {
-    createUser({ firstName: "Ada", lastName: "Lovelace", email: "Ada@Example.com", passwordHash: hashPassword("x") });
-    expect(hasAnyUser()).toBe(true);
-    expect(getUserByEmail("ada@example.com")?.firstName).toBe("Ada");
+  it("crea un usuario y lo encuentra por email, sin importar mayúsculas", async () => {
+    await createUser({ firstName: "Ada", lastName: "Lovelace", email: "Ada-Auth@Example.com", passwordHash: hashPassword("x") });
+    expect((await getUserByEmail("ada-auth@example.com"))?.firstName).toBe("Ada");
   });
 
-  it("no dos usuarios con el mismo email", () => {
-    expect(() =>
-      createUser({ firstName: "Otra", lastName: "Ada", email: "ada@example.com", passwordHash: hashPassword("y") }),
-    ).toThrow();
+  it("no dos usuarios con el mismo email", async () => {
+    await createUser({ firstName: "Otra", lastName: "Ada", email: "dup-auth@example.com", passwordHash: hashPassword("y") });
+    await expect(createUser({ firstName: "Otra", lastName: "Ada", email: "DUP-AUTH@example.com", passwordHash: hashPassword("y") })).rejects.toThrow();
   });
 });
 
 describe("sesiones", () => {
-  it("una sesión válida devuelve el usuario; una vencida, no", () => {
-    const userId = createUser({
+  it("una sesión válida devuelve el usuario; una vencida, no", async () => {
+    const userId = await createUser({
       firstName: "Grace",
       lastName: "Hopper",
-      email: "grace@example.com",
+      email: "grace-auth@example.com",
       passwordHash: hashPassword("z"),
     });
     const now = Date.now();
-    createSession({ id: "tok-viva", userId, expiresAt: now + 10_000 });
-    createSession({ id: "tok-vencida", userId, expiresAt: now - 10_000 });
+    await createSession({ id: "tok-viva", userId, expiresAt: now + 10_000 });
+    await createSession({ id: "tok-vencida", userId, expiresAt: now - 10_000 });
 
-    expect(getSession("tok-viva", now)?.userId).toBe(userId);
-    expect(getSession("tok-vencida", now)).toBeNull();
-    expect(getSession("no-existe", now)).toBeNull();
+    expect((await getSession("tok-viva", now))?.userId).toBe(userId);
+    expect(await getSession("tok-vencida", now)).toBeNull();
+    expect(await getSession("no-existe", now)).toBeNull();
   });
 
-  it("borrar la sesión la invalida", () => {
-    const userId = createUser({
+  it("borrar la sesión la invalida", async () => {
+    const userId = await createUser({
       firstName: "Margaret",
       lastName: "Hamilton",
-      email: "margaret@example.com",
+      email: "margaret-auth@example.com",
       passwordHash: hashPassword("w"),
     });
-    createSession({ id: "tok-a-borrar", userId, expiresAt: Date.now() + 10_000 });
-    expect(getSession("tok-a-borrar")?.userId).toBe(userId);
-    deleteSession("tok-a-borrar");
-    expect(getSession("tok-a-borrar")).toBeNull();
+    await createSession({ id: "tok-a-borrar", userId, expiresAt: Date.now() + 10_000 });
+    expect((await getSession("tok-a-borrar"))?.userId).toBe(userId);
+    await deleteSession("tok-a-borrar");
+    expect(await getSession("tok-a-borrar")).toBeNull();
   });
 });

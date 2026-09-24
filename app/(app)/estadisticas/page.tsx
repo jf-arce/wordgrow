@@ -11,7 +11,7 @@ export const metadata = { title: "Estadísticas" };
 
 export default async function StatsPage() {
   const user = await requireUser();
-  const s = statsData(user.id);
+  const s = await statsData(user.id);
   const empty = s.totalReviews === 0;
   const pct = s.accuracy === null ? "–" : `${Math.round(s.accuracy * 100)}%`;
   const facts = [

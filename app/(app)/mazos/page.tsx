@@ -10,7 +10,7 @@ export const metadata = { title: "Mazos" };
 
 export default async function DecksPage() {
   const user = await requireUser();
-  const decks = listDecks(user.id);
+  const decks = await listDecks(user.id);
 
   return (
     <div className="flex flex-col gap-8">

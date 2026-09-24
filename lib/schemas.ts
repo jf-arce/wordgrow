@@ -1,6 +1,41 @@
 import { z } from "zod";
 import { CARD_KINDS } from "./quiz";
 
+const quizOptionSchema = z.object({ id: z.number(), text: z.string() });
+
+/** Forma persistida de `QuizItem` (`lib/quiz.ts`): valida el JSON que vuelve de la columna
+ * `items`/`answers` de `study_sessions` antes de tratarlo como confiable. */
+export const quizItemSchema = z.object({
+  cardId: z.number(),
+  mode: z.enum(["choice", "reverse", "typed", "cloze", "flashcard"]),
+  lang: z.string(),
+  stage: z.number(),
+  term: z.string(),
+  meaning: z.string(),
+  example: z.string(),
+  prompt: z.string(),
+  answer: z.string(),
+  options: z.array(quizOptionSchema).optional(),
+  correctOptionId: z.number().optional(),
+});
+
+export const queueItemSchema = quizItemSchema.extend({ retry: z.boolean() });
+export const queueSchema = z.array(queueItemSchema);
+
+const resultSchema = z.enum(["correct", "unsure", "wrong"]);
+
+const sessionAnswerSchema = z.object({
+  result: resultSchema,
+  stageAfter: z.number(),
+  selectedId: z.number().optional(),
+  typed: z.string().optional(),
+  close: z.boolean().optional(),
+});
+export const currentAnswerSchema = sessionAnswerSchema.nullable();
+
+export const firstAttemptSchema = sessionAnswerSchema.extend({ item: quizItemSchema });
+export const firstsSchema = z.array(firstAttemptSchema);
+
 export const DECK_COLORS = ["leaf", "sun", "lilac", "sky", "rose"] as const;
 export type DeckColor = (typeof DECK_COLORS)[number];
 
@@ -93,3 +128,79 @@ export const reviewSchema = z.object({
   responseMs: z.number().int().min(0).max(3_600_000),
 });
 export type ReviewInput = z.infer<typeof reviewSchema>;
+
+/** Formato de backup (Ajustes → exportar/restaurar). Sin ids de base: al restaurar, cada
+ * mazo y cada carta se recrean desde cero para el usuario que importa. `.strict()` en cada
+ * nivel: un campo que no se reconoce (de otra versión, o alterado a mano) rechaza el
+ * archivo entero en vez de importarlo a medias. */
+const backupReviewSchema = z
+  .object({
+    mode: z.enum(["choice", "reverse", "typed", "cloze", "flashcard"]),
+    correct: z.boolean(),
+    grade: z.enum(["correct", "unsure", "wrong"]),
+    responseMs: z.number().int().min(0),
+    reviewedAt: z.string().datetime({ offset: true }),
+  })
+  .strict();
+
+const backupProgressSchema = z
+  .object({
+    stage: z.number().int().min(0),
+    dueAt: z.string().datetime({ offset: true }),
+    reps: z.number().int().min(0),
+    lapses: z.number().int().min(0),
+    lastReviewedAt: z.string().datetime({ offset: true }).nullable(),
+  })
+  .strict();
+
+const backupCardSchema = z
+  .object({
+    term: z.string(),
+    meaning: z.string(),
+    example: z.string(),
+    notes: z.string(),
+    kind: z.enum(CARD_KINDS),
+    createdAt: z.string().datetime({ offset: true }),
+    progress: backupProgressSchema,
+    reviews: z.array(backupReviewSchema),
+  })
+  .strict();
+
+const backupDeckSchema = z
+  .object({
+    name: z.string(),
+    description: z.string(),
+    color: z.string(),
+    lang: z.string(),
+    createdAt: z.string().datetime({ offset: true }),
+    cards: z.array(backupCardSchema),
+  })
+  .strict();
+
+const backupSettingsSchema = z
+  .object({
+    dailyGoal: z.number().int(),
+    ttsRate: z.number(),
+    autoplayAudio: z.boolean(),
+    theme: z.enum(["system", "light", "dark"]),
+    ttsVoice: z.string(),
+    studySource: z.enum(STUDY_SOURCES),
+    studyMode: z.enum(STUDY_MODES),
+    studyLimit: z.number().int(),
+    studyDeckScope: z.enum(["all", "selected"]),
+    reminderEnabled: z.boolean(),
+    reminderDays: z.array(z.number().int().min(0).max(6)),
+    reminderTime: z.string(),
+  })
+  .strict();
+
+export const backupSchema = z
+  .object({
+    app: z.literal("wordgrow"),
+    version: z.literal(2),
+    exportedAt: z.string().datetime({ offset: true }),
+    decks: z.array(backupDeckSchema),
+    settings: backupSettingsSchema.nullable(),
+  })
+  .strict();
+export type Backup = z.infer<typeof backupSchema>;

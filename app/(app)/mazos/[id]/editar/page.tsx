@@ -10,7 +10,7 @@ export const metadata = { title: "Editar mazo" };
 export default async function EditDeckPage({ params }: PageProps<"/mazos/[id]/editar">) {
   const user = await requireUser();
   const { id } = await params;
-  const deck = Number.isInteger(Number(id)) ? getDeck(user.id, Number(id)) : null;
+  const deck = Number.isInteger(Number(id)) ? await getDeck(user.id, Number(id)) : null;
   if (!deck) notFound();
 
   return (

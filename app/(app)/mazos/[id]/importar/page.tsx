@@ -10,14 +10,15 @@ export const metadata = { title: "Importar lista" };
 export default async function ImportPage({ params }: PageProps<"/mazos/[id]/importar">) {
   const user = await requireUser();
   const { id } = await params;
-  const deck = Number.isInteger(Number(id)) ? getDeck(user.id, Number(id)) : null;
+  const deck = Number.isInteger(Number(id)) ? await getDeck(user.id, Number(id)) : null;
   if (!deck) notFound();
+  const existing = await existingTerms(user.id, deck.id);
 
   return (
     <div className="flex max-w-3xl flex-col gap-6">
       <BackLink href={`/mazos/${deck.id}`} label={deck.name} className="self-start" />
       <h1 className="text-4xl font-extrabold">Importar lista</h1>
-      <ImportForm deckId={deck.id} existing={existingTerms(user.id, deck.id)} />
+      <ImportForm deckId={deck.id} existing={existing} />
     </div>
   );
 }

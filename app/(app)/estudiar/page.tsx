@@ -13,9 +13,7 @@ const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v
 export default async function StudyConfigPage({ searchParams }: PageProps<"/estudiar">) {
   const user = await requireUser();
   const sp = await searchParams;
-  const decks = listDecks(user.id);
-  const countsByDeck = countSourcesByDeck(user.id);
-  const prefs = getStudyPrefs(user.id);
+  const [decks, countsByDeck, prefs] = await Promise.all([listDecks(user.id), countSourcesByDeck(user.id), getStudyPrefs(user.id)]);
 
   // ?deck=N precarga el mazo desde su página de detalle.
   const deckParam = Number(first(sp.deck));

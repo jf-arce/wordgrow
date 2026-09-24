@@ -33,7 +33,7 @@ export default async function SessionPage({ searchParams }: PageProps<"/estudiar
       ? [Number(deckParam)]
       : [];
 
-  const availableIds = new Set(listDecks(user.id).map((d) => d.id));
+  const availableIds = new Set((await listDecks(user.id)).map((d) => d.id));
   if (deckIds.some((id) => !availableIds.has(id)) || (decksParam !== undefined && (deckIds.length === 0 || decksParam.split(",").length !== deckIds.length))) {
     return <div className="surface p-6"><h1 className="text-2xl font-bold">Ese mazo ya no está disponible</h1><Link href="/estudiar" className="btn btn-primary mt-4">Revisar configuración</Link></div>;
   }
@@ -43,9 +43,9 @@ export default async function SessionPage({ searchParams }: PageProps<"/estudiar
 
   // Si ya había una sesión sin terminar con esta misma selección, se retoma tal cual
   // quedó: salir de la sesión nunca reinicia el progreso del día.
-  let session = findActiveSession(user.id, opts);
+  let session = await findActiveSession(user.id, opts);
   if (!session) {
-    const items = buildSession(user.id, opts);
+    const items = await buildSession(user.id, opts);
     if (items.length === 0) {
       const changeHref = deckIds.length === 1 ? `/estudiar?deck=${deckIds[0]}` : "/estudiar";
       return (
@@ -66,10 +66,10 @@ export default async function SessionPage({ searchParams }: PageProps<"/estudiar
       );
     }
     const queue: QueueItem[] = items.map((i) => ({ ...i, retry: false }));
-    session = openSession(user.id, opts, queue);
+    session = await openSession(user.id, opts, queue);
   }
 
-  const { autoplayAudio, ttsRate, ttsVoice } = getSettings(user.id);
+  const { autoplayAudio, ttsRate, ttsVoice } = await getSettings(user.id);
 
   return (
     <QuizRunner
