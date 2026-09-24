@@ -7,6 +7,8 @@ import type { QuizItem } from "@/lib/quiz";
 import { WordCard } from "@/components/card/WordCard";
 import { useCardTilt } from "@/components/card/useCardTilt";
 import { SpeakButton } from "@/components/SpeakButton";
+import { FoxMark } from "@/components/brand/FoxMark";
+import { foxMessage } from "@/lib/fox-messages";
 import type { Answered } from "./types";
 
 function headline(item: QuizItem, a: Answered) {
@@ -18,8 +20,8 @@ function headline(item: QuizItem, a: Answered) {
 
 export const Feedback = forwardRef<
   HTMLButtonElement,
-  { item: QuizItem; answered: Answered; isLast: boolean; rate: number; voiceName?: string; onNext: () => void }
->(function Feedback({ item, answered, isLast, rate, voiceName = "", onNext }, nextRef) {
+  { item: QuizItem; answered: Answered; isLast: boolean; rate: number; voiceName?: string; onNext: () => void; foxMessageIndex: number }
+>(function Feedback({ item, answered, isLast, rate, voiceName = "", onNext, foxMessageIndex }, nextRef) {
   const ok = answered.result === "correct";
   const unsure = answered.result === "unsure";
   const leveledUp = ok && answered.stageAfter > item.stage;
@@ -28,24 +30,32 @@ export const Feedback = forwardRef<
   const lang = item.lang.split("-")[0];
   const cardRef = useRef<HTMLDivElement>(null);
   const tilt = useCardTilt(cardRef);
+  const message = foxMessage(answered.result, foxMessageIndex);
 
   return (
     <div
       className={`anim-flip flex flex-col gap-4 rounded-3xl p-5 sm:p-6 ${ok ? "bg-azure-soft" : unsure ? "bg-gold-soft" : "bg-berry-soft"}`}
     >
       <div className="flex items-center gap-3">
-        <Icon
-          size={30}
-          aria-hidden
-          className={ok ? "text-azure-strong" : unsure ? "text-gold-ink" : "text-berry-ink"}
-        />
-        <p className={`text-2xl font-bold ${ok ? "text-azure-strong" : unsure ? "text-gold-ink" : "text-berry-ink"}`}>
-          {headline(item, answered)}
-        </p>
+        <FoxMark size={64} expression={ok ? "celebrate" : unsure ? "neutral" : "retry"} />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+          <Icon
+            size={30}
+            aria-hidden
+            className={`shrink-0 ${ok ? "text-azure-strong" : unsure ? "text-gold-ink" : "text-berry-ink"}`}
+          />
+          <p className={`text-2xl font-bold ${ok ? "text-azure-strong" : unsure ? "text-gold-ink" : "text-berry-ink"}`}>
+            {headline(item, answered)}
+          </p>
+          </div>
+          <p className="mt-1 text-sm text-ink">{message}</p>
+        </div>
       </div>
       {/* Región corta y dedicada para lectores de pantalla: el bloque grande de abajo no necesita repetirse. */}
       <p role="status" aria-live="polite" className="visually-hidden">
         {headline(item, answered)}
+        {` ${message}`}
         {leveledUp ? `. La carta subió a ${stage.name.toLowerCase()}.` : ""}
       </p>
 

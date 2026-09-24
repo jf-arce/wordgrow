@@ -1,10 +1,12 @@
 import clsx from "clsx";
 import { stageInfo } from "@/lib/srs";
+import { cardArt } from "@/lib/cardArt";
 import { KIND_LABELS, type CardKind } from "@/lib/quiz";
 import { KIND_STYLE } from "@/lib/cardKind";
 import { CardArt } from "./CardArt";
 import { CardFrame } from "./CardFrame";
 import { KindGlyph } from "./KindGlyph";
+import { FoxSilhouette } from "@/components/brand/FoxSilhouette";
 
 export type WordCardSize = "mini" | "small" | "full";
 
@@ -36,6 +38,7 @@ const SIZE_CLASS: Record<WordCardSize, string> = {
  */
 export function WordCard({ term, stage, kind, lang, reps, size = "small", className, title, due }: WordCardProps) {
   const info = stageInfo(stage);
+  const art = cardArt(term);
   const showText = size !== "mini";
   const showStats = size === "full";
 
@@ -50,8 +53,12 @@ export function WordCard({ term, stage, kind, lang, reps, size = "small", classN
             <span>{info.name}</span>
           </p>
         )}
-        <div className="relative min-h-0 flex-1 overflow-hidden rounded-md">
-          <CardArt term={term} className="absolute inset-0 h-full w-full" />
+        <div
+          className="relative isolate min-h-0 flex-1 overflow-hidden rounded-md"
+          style={{ color: `hsl(${art.hue2} 70% 82%)` }}
+        >
+          <CardArt term={term} className="absolute inset-0 z-0 h-full w-full" />
+          <FoxSilhouette className="word-card-fox" />
         </div>
         {showText && (
           <div className="px-0.5 pt-1.5">

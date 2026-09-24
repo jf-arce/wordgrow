@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { FoxMark } from "@/components/brand/FoxMark";
+import { foxMessage } from "@/lib/fox-messages";
 import { useRef } from "react";
 import { CircleCheck, CircleX, Clock, RotateCcw } from "lucide-react";
 import { stageInfo } from "@/lib/srs";
@@ -35,12 +37,14 @@ export function Summary({
   exitHref,
   onPractice,
   saveError,
+  foxMessageIndex,
 }: {
   attempts: FirstAttempt[];
   practice: boolean;
   exitHref: string;
   onPractice: (missed: FirstAttempt[]) => void;
   saveError: boolean;
+  foxMessageIndex: number;
 }) {
   const correct = attempts.filter((a) => a.result === "correct").length;
   const missed = attempts.filter((a) => a.result !== "correct");
@@ -53,7 +57,11 @@ export function Summary({
   return (
     <div className="m-auto flex w-full flex-col gap-8 py-8">
       <div>
+        <FoxMark size={96} expression={correct > 0 ? "celebrate" : "retry"} className="mb-4" />
         <h1 className="text-4xl font-extrabold sm:text-5xl">{title}</h1>
+        <p className="mt-2 text-ink-soft">
+          {foxMessage(perfect ? "perfect" : correct === 0 ? "retry" : "complete", foxMessageIndex)}
+        </p>
         <p className="mt-2 text-xl text-ink-soft">
           Acertaste <span className="font-bold text-ink">{correct}</span> de {total} a la primera.
         </p>

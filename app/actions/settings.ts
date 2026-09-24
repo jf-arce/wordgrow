@@ -5,6 +5,7 @@ import { settingsSchema, studyPrefsSchema, reminderPrefsSchema } from "@/lib/sch
 import { saveSettings, saveStudyPrefs, saveReminderPrefs } from "@/lib/db/queries/settings";
 import { requireUser } from "@/lib/auth/dal";
 import { userOwnsDeck } from "@/lib/db/queries/decks";
+import { setThemeCookie } from "@/lib/theme-cookie";
 import { done, fail, type ActionResult } from "./result";
 
 export async function saveSettingsAction(input: unknown): Promise<ActionResult> {
@@ -12,6 +13,9 @@ export async function saveSettingsAction(input: unknown): Promise<ActionResult> 
   const parsed = settingsSchema.safeParse(input);
   if (!parsed.success) return fail(parsed.error.issues[0].message);
   await saveSettings(user.id, parsed.data);
+  // El root layout lee el tema de esta cookie (sin ir a la base) para pintar
+  // <html data-theme> antes del primer paint; ver lib/theme-cookie.ts.
+  await setThemeCookie(parsed.data.theme);
   revalidatePath("/", "layout");
   return done(undefined);
 }

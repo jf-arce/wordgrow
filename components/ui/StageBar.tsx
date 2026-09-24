@@ -22,6 +22,7 @@ export function StageBar({ stages, className = "" }: { stages: number[]; classNa
           n > 0 ? (
             <span
               key={stage}
+              className="stage-bar-segment"
               style={{
                 width: `${(n / total) * 100}%`,
                 background:

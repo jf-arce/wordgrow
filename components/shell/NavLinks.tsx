@@ -40,7 +40,7 @@ export function NavLinks({
                 "flex items-center gap-3 font-semibold transition-colors",
                 variant === "sidebar"
                   ? "min-h-11 rounded-full px-4 py-2"
-                  : "min-h-14 flex-col justify-center gap-0.5 px-1 py-2 text-xs",
+                  : "nav-tab-link min-h-14 flex-col justify-center gap-0.5 rounded-2xl px-1 py-2 text-xs",
                 active
                   ? variant === "sidebar"
                     ? "bg-azure-soft text-azure-strong"
@@ -49,13 +49,7 @@ export function NavLinks({
                 variant === "sidebar" && !active && "hover:bg-paper-2",
               )}
             >
-              <span
-                className={clsx(
-                  "relative grid place-items-center",
-                  variant === "tabs" && "h-7 w-14 rounded-full",
-                  variant === "tabs" && active && "bg-azure-soft",
-                )}
-              >
+              <span className="nav-tab-icon relative grid place-items-center">
                 <Icon size={variant === "sidebar" ? 20 : 22} strokeWidth={active ? 2.5 : 2} aria-hidden />
                 {showBadge && (
                   <span

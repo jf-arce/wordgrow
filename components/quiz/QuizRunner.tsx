@@ -6,9 +6,11 @@ import clsx from "clsx";
 import { motion, useReducedMotion } from "motion/react";
 import { answerSessionAction, advanceSessionAction } from "@/app/actions/session";
 import { nextProgress, type Result } from "@/lib/srs";
+import { randomFoxMessageIndex } from "@/lib/fox-messages";
 import type { QuizItem } from "@/lib/quiz";
 import type { SessionAnswer } from "@/lib/db/queries/session";
 import { BackLink } from "@/components/ui/BackLink";
+import { FoxMark } from "@/components/brand/FoxMark";
 import { SpeakButton, useSpeech } from "@/components/SpeakButton";
 import { ChoiceOptions, FlashcardActions, TypedAnswer } from "./Questions";
 import { Feedback } from "./Feedback";
@@ -57,6 +59,7 @@ export function QuizRunner({
   const [revealed, setRevealed] = useState(Boolean(initialAnswer));
   const [firsts, setFirsts] = useState<FirstAttempt[]>(initialFirsts);
   const [finished, setFinished] = useState(false);
+  const [foxMessageIndex, setFoxMessageIndex] = useState(0);
   const [saveError, setSaveError] = useState(false);
   const [pending, setPending] = useState(false);
   const [interacted, setInteracted] = useState(false);
@@ -107,6 +110,7 @@ export function QuizRunner({
     if (!item || answered || pending) return;
     const now = Date.now();
     if (practice) {
+      setFoxMessageIndex(randomFoxMessageIndex());
       const stageAfter = nextProgress({ stage: item.stage, reps: 0, lapses: 0 }, result, now).stage;
       setAnswered({ result, stageAfter, ...extra });
       if (!item.retry) setFirsts((f) => [...f, { item, result, stageAfter, ...extra }]);
@@ -117,6 +121,7 @@ export function QuizRunner({
     try {
       const res = await answerSessionAction(sessionId, index, { selectedId: extra.selectedId, typed: extra.typed ?? (item.mode === "typed" || item.mode === "cloze" ? "" : undefined), grade: item.mode === "flashcard" ? result : undefined, responseMs: Math.min(3_600_000, Math.max(0, now - startedAt.current)) });
       if (!res.ok) { setSaveError(true); return; }
+      setFoxMessageIndex(randomFoxMessageIndex());
       setAnswered(res.data.answer);
       setQueue(res.data.queue);
       setFirsts(res.data.firsts);
@@ -131,10 +136,10 @@ export function QuizRunner({
       try {
         const res = await advanceSessionAction(sessionId, index);
         if (!res.ok) { setSaveError(true); return; }
-        if (res.data.finished) { setFinished(true); return; }
+        if (res.data.finished) { setFoxMessageIndex(randomFoxMessageIndex()); setFinished(true); return; }
       } catch { setSaveError(true); return; }
       finally { setPending(false); }
-    } else if (isLast) { setFinished(true); return; }
+    } else if (isLast) { setFoxMessageIndex(randomFoxMessageIndex()); setFinished(true); return; }
     setIndex((i) => i + 1);
     setAnswered(null);
     setRevealed(false);
@@ -205,7 +210,7 @@ export function QuizRunner({
 
   if (finished) {
     return (
-      <Summary attempts={firsts} practice={practice} exitHref={exitHref} onPractice={startPractice} saveError={saveError} />
+      <Summary attempts={firsts} practice={practice} exitHref={exitHref} onPractice={startPractice} saveError={saveError} foxMessageIndex={foxMessageIndex} />
     );
   }
 
@@ -228,7 +233,8 @@ export function QuizRunner({
 
   return (
     <div className="flex flex-1 flex-col gap-6">
-      <header className="flex items-center gap-3 sm:gap-4">
+      <header className="flex flex-wrap items-center gap-3 sm:gap-4">
+        <FoxMark size={36} />
         <BackLink href={exitHref} label="Salir" className="btn-small shrink-0" />
         {firsts.length > 0 && (
           <button
@@ -240,7 +246,10 @@ export function QuizRunner({
             Ver anterior
           </button>
         )}
-        <div className="flex-1">
+        {/* En mobile pasa a su propia fila (order-last + basis-full) para no quedar pegada
+            al botón "Ver anterior"; en sm+ vuelve a compartir la fila con los botones, en el
+            mismo lugar de siempre (antes de los atajos). */}
+        <div className="order-last mt-1 basis-full sm:order-none sm:mt-0 sm:flex-1 sm:basis-auto">
           <div className="mb-1 flex items-center justify-between gap-2 text-xs font-semibold text-ink-soft">
             <span className="tabular-nums">
               {current} / {roundSize}
@@ -266,7 +275,11 @@ export function QuizRunner({
             />
           </div>
         </div>
-        <ShortcutsHelp />
+        {/* Los atajos de teclado no aplican en touch: se ocultan en mobile para liberar
+            espacio en el header. */}
+        <div className="order-last hidden sm:order-none sm:block">
+          <ShortcutsHelp />
+        </div>
       </header>
 
       {practice && <p className="text-sm font-semibold text-lilac-ink">Entrenamiento extra: no cambia tu calendario.</p>}
@@ -283,7 +296,10 @@ export function QuizRunner({
         initial={reduceMotion ? undefined : { opacity: 0, y: 24, scale: 0.96 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.22, ease: [0.2, 0.9, 0.3, 1] }}
-        className={clsx("flex flex-1 flex-col justify-start gap-6 pb-8", item.mode === "flashcard" ? "items-center pt-[4vh]" : "pt-[6vh]")}
+        className={clsx(
+          "flex flex-1 flex-col justify-start gap-6 pb-4 sm:pb-8",
+          item.mode === "flashcard" ? "items-center pt-[2vh] sm:pt-[4vh]" : "pt-[2vh] sm:pt-[6vh]",
+        )}
       >
         <div className={clsx("surface flex w-full max-w-3xl flex-col gap-3 p-5 sm:p-6", item.mode === "flashcard" && "mx-auto items-center text-center")}>
           <h1
@@ -345,7 +361,7 @@ export function QuizRunner({
         )}
 
         {answered && (
-          <Feedback ref={nextRef} item={item} answered={answered} isLast={isLast} rate={rate} voiceName={voiceName} onNext={next} />
+          <Feedback ref={nextRef} item={item} answered={answered} isLast={isLast} rate={rate} voiceName={voiceName} onNext={next} foxMessageIndex={foxMessageIndex} />
         )}
       </motion.section>
     </div>

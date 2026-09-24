@@ -5,6 +5,8 @@ import { signupSchema, loginSchema } from "@/lib/schemas";
 import { createUser, getUserByEmail } from "@/lib/db/queries/auth";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import { startSession, endSession } from "@/lib/auth/session";
+import { getSettings } from "@/lib/db/queries/settings";
+import { setThemeCookie, clearThemeCookie } from "@/lib/theme-cookie";
 import { fail, type ActionResult } from "./result";
 
 // Freno simple de fuerza bruta: contador en memoria por email, con demora creciente.
@@ -62,10 +64,16 @@ export async function loginAction(input: unknown): Promise<ActionResult> {
 
   clearFailures(email);
   await startSession(user.id);
+  // Sincroniza la cookie de tema con lo que ese usuario tenía guardado, para que el
+  // root layout no arranque en "system" en un browser nuevo hasta la próxima vez que
+  // entre a Ajustes (ver lib/theme-cookie.ts).
+  const { theme } = await getSettings(user.id);
+  await setThemeCookie(theme);
   redirect("/");
 }
 
 export async function logoutAction(): Promise<void> {
   await endSession();
+  await clearThemeCookie();
   redirect("/ingresar");
 }

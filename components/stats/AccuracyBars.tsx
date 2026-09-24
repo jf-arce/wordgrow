@@ -1,34 +1,55 @@
-/** Precisión por mazo: una barra fina por mazo con el valor en la punta. Una sola serie, sin leyenda. */
+"use client";
+
+import { Tooltip as RechartsTooltip } from "recharts";
+import { EvilBarChart } from "@/components/evilcharts/charts/recharts-bar-chart";
+
+const ROW_HEIGHT = 40;
+const MIN_HEIGHT = 120;
+
+/** Precisión por mazo: una barra horizontal por mazo, con tooltip al pasar el mouse. */
 export function AccuracyBars({
   decks,
 }: {
   decks: { id: number; name: string; reviews: number; accuracy: number | null }[];
 }) {
+  const data = decks.map((d) => ({
+    name: d.name,
+    pct: d.accuracy === null ? 0 : Math.round(d.accuracy * 100),
+    reviews: d.reviews,
+    hasData: d.accuracy !== null,
+  }));
+
   return (
-    <ul className="flex flex-col gap-4">
-      {decks.map((d) => {
-        const pct = d.accuracy === null ? null : Math.round(d.accuracy * 100);
-        return (
-          <li key={d.id} className="grid grid-cols-[minmax(0,10rem)_1fr_auto] items-center gap-x-3 gap-y-1 sm:grid-cols-[12rem_1fr_4.5rem]">
-            <span className="truncate font-semibold">{d.name}</span>
-            <div
-              role="img"
-              aria-label={pct === null ? `${d.name}: sin repasos` : `${d.name}: ${pct}% de aciertos en ${d.reviews} repasos`}
-              className="h-3 rounded-full bg-paper-2"
-            >
-              {pct !== null && (
-                <div
-                  className="h-full rounded-r-[4px] rounded-l-full bg-azure"
-                  style={{ width: `${Math.max(pct, 2)}%` }}
-                />
-              )}
-            </div>
-            <span className="text-right tabular-nums text-ink-soft">
-              {pct === null ? "Sin repasos" : <span className="font-semibold text-ink">{pct}%</span>}
-            </span>
-          </li>
-        );
-      })}
-    </ul>
+    <div style={{ height: Math.max(decks.length * ROW_HEIGHT, MIN_HEIGHT) }} className="w-full">
+      <EvilBarChart
+        data={data}
+        config={{ pct: { label: "Aciertos", colors: { light: ["var(--color-azure)"] } } }}
+        layout="horizontal"
+        barRadius={4}
+        className="h-full w-full flex-none aspect-auto"
+      >
+        <EvilBarChart.YAxis dataKey="name" width={120} tick={{ fill: "var(--color-ink)" }} />
+        <EvilBarChart.XAxis type="number" domain={[0, 100]} tickFormatter={(v: number) => `${v}%`} />
+        <RechartsTooltip cursor={{ fill: "var(--color-paper-2)" }} content={<TooltipContent />} />
+        <EvilBarChart.Bar dataKey="pct" variant="gradient" />
+      </EvilBarChart>
+    </div>
+  );
+}
+
+function TooltipContent({
+  active,
+  payload,
+}: {
+  active?: boolean;
+  payload?: { payload: { name: string; pct: number; reviews: number; hasData: boolean } }[];
+}) {
+  if (!active || !payload?.length) return null;
+  const { name, pct, reviews, hasData } = payload[0].payload;
+  return (
+    <div className="rounded-lg border border-border/50 bg-background px-2.5 py-1.5 text-xs shadow-xl">
+      <span className="font-medium">{name}</span>:{" "}
+      {hasData ? `${pct}% de aciertos en ${reviews} ${reviews === 1 ? "repaso" : "repasos"}` : "sin repasos"}
+    </div>
   );
 }
