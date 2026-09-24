@@ -16,7 +16,7 @@ import { getCurrentUser, requireUser } from "@/lib/auth/dal";
 export async function generateMetadata({ params }: PageProps<"/mazos/[id]">) {
   const { id } = await params;
   const user = await getCurrentUser();
-  const deck = user && Number.isInteger(Number(id)) ? getDeck(user.id, Number(id)) : null;
+  const deck = user && Number.isInteger(Number(id)) ? await getDeck(user.id, Number(id)) : null;
   return { title: deck?.name ?? "Mazo" };
 }
 
@@ -25,7 +25,7 @@ const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v
 export default async function DeckPage({ params, searchParams }: PageProps<"/mazos/[id]">) {
   const user = await requireUser();
   const { id } = await params;
-  const deck = Number.isInteger(Number(id)) ? getDeck(user.id, Number(id)) : null;
+  const deck = Number.isInteger(Number(id)) ? await getDeck(user.id, Number(id)) : null;
   if (!deck) notFound();
 
   const sp = await searchParams;
@@ -39,7 +39,7 @@ export default async function DeckPage({ params, searchParams }: PageProps<"/maz
   const kind = (CARD_KINDS as readonly string[]).includes(kindParam ?? "") ? (kindParam as CardKind) : undefined;
   const filtered = q !== "" || stage !== undefined || kind !== undefined;
 
-  const cards = listCards(user.id, deck.id, { q: q || undefined, stage, kind });
+  const cards = await listCards(user.id, deck.id, { q: q || undefined, stage, kind });
 
   return (
     <div className="flex flex-col gap-8">

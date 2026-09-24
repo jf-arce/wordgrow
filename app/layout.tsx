@@ -36,7 +36,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   // Sin sesión (páginas de /ingresar y /registro) se usa el tema por defecto: acá nunca se
   // exige login, para no generar un redirect en bucle contra esas mismas páginas.
   const user = await getCurrentUser();
-  const { theme } = user ? getSettings(user.id) : DEFAULT_SETTINGS;
+  const { theme } = user ? await getSettings(user.id) : DEFAULT_SETTINGS;
 
   return (
     <html

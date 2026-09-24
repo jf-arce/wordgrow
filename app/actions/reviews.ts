@@ -10,7 +10,7 @@ export async function recordReviewAction(input: unknown): Promise<ActionResult<{
   const user = await requireUser();
   const parsed = reviewSchema.safeParse(input);
   if (!parsed.success) return fail("Respuesta inválida.");
-  const res = recordReview(user.id, parsed.data);
+  const res = await recordReview(user.id, parsed.data);
   if (!res) return fail("Esa tarjeta ya no existe.");
   revalidatePath("/", "layout");
   return done({ stage: res.stage });

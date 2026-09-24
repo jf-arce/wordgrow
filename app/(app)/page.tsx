@@ -18,22 +18,24 @@ export const metadata = { title: "Estudiar" };
 
 export default async function TodayPage() {
   const user = await requireUser();
-  const today = todaySummary(user.id);
-  const prefs = getStudyPrefs(user.id);
-  const decks = listDecks(user.id);
-  const countsByDeck = countSourcesByDeck(user.id);
+  const [today, prefs, decks, countsByDeck, focus, week, active, studyHref, reminderPrefs] = await Promise.all([
+    todaySummary(user.id),
+    getStudyPrefs(user.id),
+    listDecks(user.id),
+    countSourcesByDeck(user.id),
+    studyFocus(user.id),
+    weekActivity(user.id),
+    activeSessionSummary(user.id),
+    resolveStudyHref(user.id),
+    getReminderPrefs(user.id),
+  ]);
   const selectedIds = prefs.deckScope === "selected" ? prefs.deckIds : decks.map((d) => d.id);
   const available = selectedIds.reduce((total, id) => total + (countsByDeck[id]?.[prefs.source] ?? 0), 0);
-  const focus = studyFocus(user.id);
-  const week = weekActivity(user.id);
   const empty = decks.length === 0;
-  const active = activeSessionSummary(user.id);
   const resumeHref = active ? sessionHref(active) : null;
-  const studyHref = resolveStudyHref(user.id);
 
   const now = new Date();
   const notReviewedToday = !empty && today.reviewedToday === 0;
-  const reminderPrefs = getReminderPrefs(user.id);
   const remindToday = notReviewedToday && isDueNow(reminderPrefs, now);
   const streakAtRisk = notReviewedToday && today.streak > 0 && 24 - now.getHours() <= 4;
 

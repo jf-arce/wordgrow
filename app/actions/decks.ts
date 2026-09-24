@@ -12,7 +12,7 @@ export async function createDeckAction(input: unknown): Promise<ActionResult<{ i
   const user = await requireUser();
   const parsed = deckSchema.safeParse(input);
   if (!parsed.success) return fail(parsed.error.issues[0].message);
-  const id = createDeck(user.id, parsed.data);
+  const id = await createDeck(user.id, parsed.data);
   revalidatePath("/", "layout");
   return done({ id });
 }
@@ -23,7 +23,7 @@ export async function updateDeckAction(id: number, input: unknown): Promise<Acti
   if (!parsed.success || !Number.isInteger(id)) {
     return fail(parsed.success ? "Mazo inválido." : parsed.error.issues[0].message);
   }
-  updateDeck(user.id, id, parsed.data);
+  await updateDeck(user.id, id, parsed.data);
   revalidatePath("/", "layout");
   return done(undefined);
 }
@@ -31,16 +31,16 @@ export async function updateDeckAction(id: number, input: unknown): Promise<Acti
 export async function deleteDeckAction(id: number): Promise<ActionResult> {
   const user = await requireUser();
   if (!Number.isInteger(id)) return fail("Mazo inválido.");
-  deleteDeck(user.id, id);
+  await deleteDeck(user.id, id);
   revalidatePath("/", "layout");
   return done(undefined);
 }
 
 export async function createSampleDeckAction(): Promise<ActionResult<{ id: number }>> {
   const user = await requireUser();
-  const id = createDeck(user.id, SAMPLE_DECK);
-  importCards(user.id, id, SAMPLE_CARDS);
-  seedSampleCardStages(user.id, id);
+  const id = await createDeck(user.id, SAMPLE_DECK);
+  await importCards(user.id, id, SAMPLE_CARDS);
+  await seedSampleCardStages(user.id, id);
   revalidatePath("/", "layout");
   return done({ id });
 }

@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { signupSchema, loginSchema } from "@/lib/schemas";
-import { createUser, getUserByEmail, hasAnyUser, adoptOrphanData } from "@/lib/db/queries/auth";
+import { createUser, getUserByEmail } from "@/lib/db/queries/auth";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import { startSession, endSession } from "@/lib/auth/session";
 import { fail, type ActionResult } from "./result";
@@ -36,15 +36,9 @@ export async function signupAction(input: unknown): Promise<ActionResult<{ id: n
   if (!parsed.success) return fail(parsed.error.issues[0].message);
   const { firstName, lastName, email, password } = parsed.data;
 
-  if (getUserByEmail(email)) return fail("Ya existe una cuenta con ese email.");
+  if (await getUserByEmail(email)) return fail("Ya existe una cuenta con ese email.");
 
-  const wasFirstUser = !hasAnyUser();
-  const id = createUser({ firstName, lastName, email, passwordHash: hashPassword(password) });
-
-  if (wasFirstUser) {
-    // Los mazos y ajustes que ya existían en esta instalación pasan a ser de la primera cuenta.
-    adoptOrphanData(id);
-  }
+  const id = await createUser({ firstName, lastName, email, passwordHash: hashPassword(password) });
 
   await startSession(id);
   // La meta diaria y el resto de las preferencias ya quedan en 20/default; /bienvenida las
@@ -60,7 +54,7 @@ export async function loginAction(input: unknown): Promise<ActionResult> {
   const waitMs = throttled(email);
   if (waitMs > 0) return fail(`Demasiados intentos. Probá de nuevo en ${Math.ceil(waitMs / 1000)}s.`);
 
-  const user = getUserByEmail(email);
+  const user = await getUserByEmail(email);
   if (!user || !verifyPassword(password, user.passwordHash)) {
     registerFailure(email);
     return fail("Email o contraseña incorrectos.");

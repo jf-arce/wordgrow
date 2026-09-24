@@ -11,18 +11,19 @@ export const metadata = { title: "Ajustes" };
 
 export default async function SettingsPage() {
   const user = await requireUser();
+  const [settings, reminderPrefs] = await Promise.all([getSettings(user.id), getReminderPrefs(user.id)]);
 
   return (
     <div className="flex flex-col gap-10">
       <BackLink href="/" label="Estudiar" className="self-start" />
       <h1 className="text-4xl font-extrabold">Ajustes</h1>
-      <SettingsForm defaults={getSettings(user.id)} />
+      <SettingsForm defaults={settings} />
 
       <section aria-labelledby="recordatorios-titulo" className="flex flex-col gap-3 border-t border-line pt-8">
         <h2 id="recordatorios-titulo" className="text-2xl font-bold">
           Recordatorios
         </h2>
-        <ReminderSetup defaults={getReminderPrefs(user.id)} />
+        <ReminderSetup defaults={reminderPrefs} />
       </section>
 
       <section aria-labelledby="cuenta-titulo" className="flex flex-col gap-3 border-t border-line pt-8">
@@ -47,8 +48,7 @@ export default async function SettingsPage() {
           Tus datos
         </h2>
         <p className="max-w-prose text-ink-soft">
-          Todo se guarda en un archivo SQLite en esta computadora (<code className="rounded bg-paper-2 px-1.5 py-0.5">data/wordgrow.db</code>). Descargá un backup
-          para llevarlo a otro lado o para tener una copia de seguridad.
+          Descargá un backup para llevarlo a otro lado o para tener una copia de seguridad.
         </p>
         <BackupPanel />
       </section>

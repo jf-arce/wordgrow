@@ -10,9 +10,7 @@ import { ReminderTimer } from "@/components/pwa/ReminderTimer";
 
 export default async function AppLayout({ children }: LayoutProps<"/">) {
   const user = await requireUser();
-  const today = todaySummary(user.id);
-  const { dailyGoal } = getSettings(user.id);
-  const reminderPrefs = getReminderPrefs(user.id);
+  const [today, { dailyGoal }, reminderPrefs] = await Promise.all([todaySummary(user.id), getSettings(user.id), getReminderPrefs(user.id)]);
 
   return (
     <div className="lg:grid lg:grid-cols-[16.5rem_minmax(0,1fr)]">

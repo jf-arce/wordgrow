@@ -1,5 +1,6 @@
 import "server-only";
-import { getDb } from "../index";
+import { prisma } from "../index";
+import { Prisma } from "@/lib/generated/prisma/client";
 
 export type User = {
   id: number;
@@ -10,64 +11,66 @@ export type User = {
 
 type UserRow = User & { passwordHash: string };
 
-export function createUser(input: { firstName: string; lastName: string; email: string; passwordHash: string }): number {
-  const res = getDb()
-    .prepare(
-      `INSERT INTO users (first_name, last_name, email, password_hash, created_at)
-       VALUES (?, ?, ?, ?, ?)`,
-    )
-    .run(input.firstName, input.lastName, input.email, input.passwordHash, Date.now());
-  return Number(res.lastInsertRowid);
+/** Crea el usuario junto con su fila de ajustes por defecto. El email se guarda y se busca
+ * siempre en minúsculas, para que dos cuentas nunca difieran sólo por mayúsculas. */
+export async function createUser(input: {
+  firstName: string;
+  lastName: string;
+  email: string;
+  passwordHash: string;
+}): Promise<number> {
+  const user = await prisma.user.create({
+    data: {
+      firstName: input.firstName,
+      lastName: input.lastName,
+      email: input.email.toLowerCase(),
+      passwordHash: input.passwordHash,
+      settings: { create: {} },
+    },
+    select: { id: true },
+  });
+  return user.id;
 }
 
-export function getUserByEmail(email: string): UserRow | null {
-  const row = getDb()
-    .prepare(
-      `SELECT id, first_name AS firstName, last_name AS lastName, email, password_hash AS passwordHash
-       FROM users WHERE email = ? COLLATE NOCASE`,
-    )
-    .get(email) as UserRow | undefined;
-  return row ?? null;
+export async function getUserByEmail(email: string): Promise<UserRow | null> {
+  const user = await prisma.user.findUnique({
+    where: { email: email.toLowerCase() },
+    select: { id: true, firstName: true, lastName: true, email: true, passwordHash: true },
+  });
+  return user ?? null;
 }
 
-export function getUserById(id: number): User | null {
-  const row = getDb()
-    .prepare(`SELECT id, first_name AS firstName, last_name AS lastName, email FROM users WHERE id = ?`)
-    .get(id) as User | undefined;
-  return row ?? null;
+export async function getUserById(id: number): Promise<User | null> {
+  const user = await prisma.user.findUnique({
+    where: { id },
+    select: { id: true, firstName: true, lastName: true, email: true },
+  });
+  return user ?? null;
 }
 
-export function createSession(input: { id: string; userId: number; expiresAt: number }): void {
-  const now = Date.now();
-  getDb()
-    .prepare(`INSERT INTO sessions (id, user_id, created_at, expires_at, last_seen_at) VALUES (?, ?, ?, ?, ?)`)
-    .run(input.id, input.userId, now, input.expiresAt, now);
+export async function createSession(input: { id: string; userId: number; expiresAt: number }): Promise<void> {
+  const now = new Date();
+  await prisma.session.create({
+    data: { id: input.id, userId: input.userId, createdAt: now, expiresAt: new Date(input.expiresAt), lastSeenAt: now },
+  });
 }
 
-export function getSession(id: string, now = Date.now()): { userId: number; expiresAt: number } | null {
-  const row = getDb().prepare(`SELECT user_id AS userId, expires_at AS expiresAt FROM sessions WHERE id = ?`).get(id) as
-    | { userId: number; expiresAt: number }
-    | undefined;
-  if (!row || row.expiresAt <= now) return null;
-  return row;
+export async function getSession(id: string, now = Date.now()): Promise<{ userId: number; expiresAt: number } | null> {
+  const session = await prisma.session.findUnique({ where: { id }, select: { userId: true, expiresAt: true } });
+  if (!session || session.expiresAt.getTime() <= now) return null;
+  return { userId: session.userId, expiresAt: session.expiresAt.getTime() };
 }
 
-export function touchSession(id: string, expiresAt: number): void {
-  getDb().prepare(`UPDATE sessions SET last_seen_at = ?, expires_at = ? WHERE id = ?`).run(Date.now(), expiresAt, id);
+export async function touchSession(id: string, expiresAt: number): Promise<void> {
+  try {
+    await prisma.session.update({ where: { id }, data: { lastSeenAt: new Date(), expiresAt: new Date(expiresAt) } });
+  } catch (error) {
+    // La sesión pudo haber sido borrada (logout en otra pestaña) justo antes del touch.
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") return;
+    throw error;
+  }
 }
 
-export function deleteSession(id: string): void {
-  getDb().prepare(`DELETE FROM sessions WHERE id = ?`).run(id);
-}
-
-/** Mueve los mazos y ajustes que existían antes de que hubiera cuentas a la primera cuenta creada. */
-export function adoptOrphanData(userId: number): void {
-  const db = getDb();
-  db.prepare(`UPDATE decks SET user_id = ? WHERE user_id IS NULL`).run(userId);
-  db.prepare(`UPDATE settings SET user_id = ? WHERE user_id = 0`).run(userId);
-}
-
-export function hasAnyUser(): boolean {
-  const row = getDb().prepare(`SELECT COUNT(*) AS n FROM users`).get() as { n: number };
-  return row.n > 0;
+export async function deleteSession(id: string): Promise<void> {
+  await prisma.session.deleteMany({ where: { id } });
 }

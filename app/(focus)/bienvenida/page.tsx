@@ -8,6 +8,7 @@ export const metadata = { title: "Bienvenido/a" };
 
 export default async function OnboardingPage() {
   const user = await requireUser();
+  const [settings, reminderPrefs] = await Promise.all([getSettings(user.id), getReminderPrefs(user.id)]);
 
   return (
     <div className="m-auto flex w-full max-w-lg flex-col gap-8 py-10">
@@ -18,13 +19,13 @@ export default async function OnboardingPage() {
         </p>
       </div>
 
-      <OnboardingForm defaults={getSettings(user.id)} />
+      <OnboardingForm defaults={settings} />
 
       <section aria-labelledby="recordatorios-titulo" className="flex flex-col gap-3 border-t border-line pt-6">
         <h2 id="recordatorios-titulo" className="text-xl font-bold">
           Recordatorios (opcional)
         </h2>
-        <ReminderSetup defaults={getReminderPrefs(user.id)} />
+        <ReminderSetup defaults={reminderPrefs} />
       </section>
 
       <Link href="/" className="text-center text-ink-soft underline-offset-4 hover:underline">

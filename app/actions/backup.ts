@@ -8,7 +8,7 @@ import { done, fail, type ActionResult } from "./result";
 export async function exportBackupAction(): Promise<ActionResult<{ json: string; filename: string }>> {
   const user = await requireUser();
   const stamp = new Date().toISOString().slice(0, 10);
-  return done({ json: JSON.stringify(exportAll(user.id), null, 2), filename: `wordgrow-backup-${stamp}.json` });
+  return done({ json: JSON.stringify(await exportAll(user.id), null, 2), filename: `wordgrow-backup-${stamp}.json` });
 }
 
 export async function importBackupAction(json: string): Promise<ActionResult<{ decks: number; cards: number }>> {
@@ -21,7 +21,7 @@ export async function importBackupAction(json: string): Promise<ActionResult<{ d
     return fail("El archivo no es un JSON válido.");
   }
   try {
-    const result = importAll(user.id, parsed);
+    const result = await importAll(user.id, parsed);
     revalidatePath("/", "layout");
     return done(result);
   } catch (error) {
@@ -31,7 +31,7 @@ export async function importBackupAction(json: string): Promise<ActionResult<{ d
 
 export async function resetAllAction(): Promise<ActionResult> {
   const user = await requireUser();
-  resetAll(user.id);
+  await resetAll(user.id);
   revalidatePath("/", "layout");
   return done(undefined);
 }

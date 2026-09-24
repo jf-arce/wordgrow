@@ -1,5 +1,5 @@
 import "server-only";
-import { getDb, transaction } from "../index";
+import { prisma } from "../index";
 import { buildItem, canBuildItem, type CardKind, type QuizCard, type QuizItem, type StudyMode } from "@/lib/quiz";
 import { shuffle } from "@/lib/text";
 import { nextProgress, type Result } from "@/lib/srs";
@@ -23,13 +23,36 @@ type Row = {
   reps: number;
 };
 
-const SELECT = `
-  SELECT c.id, c.deck_id AS deckId, c.term, c.meaning, c.example, c.kind,
-         p.stage, d.lang, p.due_at AS dueAt, p.lapses, p.reps
-  FROM cards c
-  JOIN card_progress p ON p.card_id = c.id
-  JOIN decks d ON d.id = c.deck_id
-  WHERE d.user_id = ?`;
+async function loadRows(userId: number): Promise<Row[]> {
+  const cards = await prisma.card.findMany({
+    where: { deck: { userId } },
+    select: {
+      id: true,
+      deckId: true,
+      term: true,
+      meaning: true,
+      example: true,
+      kind: true,
+      deck: { select: { lang: true } },
+      progress: { select: { stage: true, dueAt: true, lapses: true, reps: true } },
+    },
+  });
+  return cards
+    .filter((c) => c.progress !== null)
+    .map((c) => ({
+      id: c.id,
+      deckId: c.deckId,
+      term: c.term,
+      meaning: c.meaning,
+      example: c.example,
+      kind: c.kind,
+      stage: c.progress!.stage,
+      lang: c.deck.lang,
+      dueAt: c.progress!.dueAt.getTime(),
+      lapses: c.progress!.lapses,
+      reps: c.progress!.reps,
+    }));
+}
 
 function toQuizCard(r: Row): QuizCard {
   return {
@@ -53,32 +76,21 @@ export type SessionOptions = {
 };
 
 /** Cuántas tarjetas hay disponibles para cada fuente (para la pantalla de configuración). */
-export function countSources(userId: number, deckIds: number[] = [], now = Date.now()): Record<StudySource, number> {
-  const scope = deckIds.length ? `AND c.deck_id IN (${deckIds.map(() => "?").join(",")})` : "";
-  const row = getDb()
-    .prepare(
-      `SELECT COUNT(*) AS total,
-              COALESCE(SUM(p.due_at <= ?), 0) AS due,
-              COALESCE(SUM(p.reps = 0), 0) AS fresh,
-              COALESCE(SUM(p.lapses > 0 OR (p.reps > 0 AND p.stage <= 2)), 0) AS hard
-       FROM cards c JOIN card_progress p ON p.card_id = c.id JOIN decks d ON d.id = c.deck_id
-       WHERE d.user_id = ? ${scope}`,
-    )
-    .get(now, userId, ...deckIds) as { total: number; due: number; fresh: number; hard: number };
-  return { due: row.due, all: row.total, hard: row.hard, new: row.fresh };
+export async function countSources(userId: number, deckIds: number[] = [], now = Date.now()): Promise<Record<StudySource, number>> {
+  const rows = await loadRows(userId);
+  const scoped = deckIds.length ? rows.filter((r) => deckIds.includes(r.deckId)) : rows;
+  return {
+    due: scoped.filter((r) => r.dueAt <= now).length,
+    all: scoped.length,
+    hard: scoped.filter((r) => r.lapses > 0 || (r.reps > 0 && r.stage <= 2)).length,
+    new: scoped.filter((r) => r.reps === 0).length,
+  };
 }
 
 /** Igual que `countSources`, pero desglosado por mazo: para que el selector de mazos
  * muestre conteos por fuente sin un round-trip al servidor por cada click. */
-export function countSourcesByDeck(userId: number, now = Date.now()): Record<number, Record<StudySource, number>> {
-  const rows = getDb()
-    .prepare(
-      `SELECT c.deck_id AS deckId, p.due_at AS dueAt, p.reps, p.lapses, p.stage
-       FROM cards c JOIN card_progress p ON p.card_id = c.id JOIN decks d ON d.id = c.deck_id
-       WHERE d.user_id = ?`,
-    )
-    .all(userId) as { deckId: number; dueAt: number; reps: number; lapses: number; stage: number }[];
-
+export async function countSourcesByDeck(userId: number, now = Date.now()): Promise<Record<number, Record<StudySource, number>>> {
+  const rows = await loadRows(userId);
   const out: Record<number, Record<StudySource, number>> = {};
   for (const r of rows) {
     const c = (out[r.deckId] ??= { due: 0, all: 0, hard: 0, new: 0 });
@@ -90,9 +102,8 @@ export function countSourcesByDeck(userId: number, now = Date.now()): Record<num
   return out;
 }
 
-export function buildSession(userId: number, options: SessionOptions, now = Date.now()): QuizItem[] {
-  const db = getDb();
-  const all = db.prepare(SELECT).all(userId) as Row[];
+export async function buildSession(userId: number, options: SessionOptions, now = Date.now()): Promise<QuizItem[]> {
+  const all = await loadRows(userId);
   const scoped = options.deckIds.length ? all.filter((r) => options.deckIds.includes(r.deckId)) : all;
 
   let picked: Row[];
@@ -117,29 +128,35 @@ export function buildSession(userId: number, options: SessionOptions, now = Date
   return shuffle(compatible.slice(0, options.limit)).map((r) => buildItem(toQuizCard(r), pool, options.mode));
 }
 
-export function recordReview(
+export async function recordReview(
   userId: number,
   input: { cardId: number; mode: QuizMode; result: Result; responseMs: number },
-): { stage: number; dueAt: number } | null {
-  if (!userOwnsCard(userId, input.cardId)) return null;
+): Promise<{ stage: number; dueAt: number } | null> {
+  if (!(await userOwnsCard(userId, input.cardId))) return null;
   const now = Date.now();
-  return transaction((db) => {
-    const current = db
-      .prepare("SELECT stage, reps, lapses FROM card_progress WHERE card_id = ?")
-      .get(input.cardId) as { stage: number; reps: number; lapses: number } | undefined;
+  return prisma.$transaction(async (tx) => {
+    const current = await tx.cardProgress.findUnique({
+      where: { cardId: input.cardId },
+      select: { stage: true, reps: true, lapses: true },
+    });
     if (!current) return null;
 
     const next = nextProgress(current, input.result, now);
-    db.prepare(
-      `UPDATE card_progress
-       SET stage = ?, due_at = ?, reps = ?, lapses = ?, last_reviewed_at = ?
-       WHERE card_id = ?`,
-    ).run(next.stage, next.dueAt, next.reps, next.lapses, now, input.cardId);
+    await tx.cardProgress.update({
+      where: { cardId: input.cardId },
+      data: { stage: next.stage, dueAt: new Date(next.dueAt), reps: next.reps, lapses: next.lapses, lastReviewedAt: new Date(now) },
+    });
 
-    db.prepare(
-      `INSERT INTO reviews (card_id, mode, correct, grade, response_ms, reviewed_at)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-    ).run(input.cardId, input.mode, input.result === "correct" ? 1 : 0, input.result, input.responseMs, now);
+    await tx.review.create({
+      data: {
+        cardId: input.cardId,
+        mode: input.mode,
+        correct: input.result === "correct",
+        grade: input.result,
+        responseMs: input.responseMs,
+        reviewedAt: new Date(now),
+      },
+    });
 
     return { stage: next.stage, dueAt: next.dueAt };
   });
