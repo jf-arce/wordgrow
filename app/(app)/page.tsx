@@ -46,9 +46,9 @@ export default async function TodayPage() {
           <span className="font-semibold">
             Tenés una sesión a medias: respondiste {active.answered} de {active.limit}.
           </span>
-          <Link href={resumeHref} className="btn btn-primary btn-sm">
+          <Link href={resumeHref} className="btn btn-primary btn-sm" aria-label="Seguir donde quedaste">
             <Play size={16} aria-hidden fill="currentColor" />
-            Seguí donde quedaste
+            Seguir
           </Link>
         </div>
       )}
