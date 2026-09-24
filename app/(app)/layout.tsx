@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { Skeleton } from "@/components/loading/Skeleton";
 import { NavLinks } from "@/components/shell/NavLinks";
 import { NavBadge } from "@/components/shell/NavBadge";
 import { Wordmark } from "@/components/shell/Wordmark";
@@ -37,7 +38,7 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
       <div className="min-w-0">
         <header className="flex items-center justify-between px-4 pt-5 lg:hidden">
           <Wordmark />
-          <Suspense fallback={<span aria-hidden className="skeleton h-8 w-14 rounded-full" />}>
+          <Suspense fallback={<Skeleton className="h-8 w-14 rounded-full" />}>
             <HeaderStreak />
           </Suspense>
         </header>
