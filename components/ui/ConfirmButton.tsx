@@ -11,6 +11,7 @@ export function ConfirmButton({
   onConfirm,
   className = "btn btn-danger btn-small",
   ariaLabel,
+  disabled = false,
 }: {
   children: ReactNode;
   title: string;
@@ -19,6 +20,7 @@ export function ConfirmButton({
   onConfirm: () => void | Promise<void>;
   className?: string;
   ariaLabel?: string;
+  disabled?: boolean;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
@@ -36,7 +38,13 @@ export function ConfirmButton({
 
   return (
     <>
-      <button type="button" className={className} aria-label={ariaLabel} onClick={() => ref.current?.showModal()}>
+      <button
+        type="button"
+        className={className}
+        aria-label={ariaLabel}
+        disabled={disabled}
+        onClick={() => ref.current?.showModal()}
+      >
         {children}
       </button>
       <dialog
