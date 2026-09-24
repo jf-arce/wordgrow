@@ -1,28 +1,16 @@
 import Link from "next/link";
-import { KIND_LABELS, CARD_KINDS, type CardKind } from "@/lib/quiz";
-import { KIND_STYLE } from "@/lib/cardKind";
-import { KindGlyph } from "@/components/card/KindGlyph";
 import { deckColor } from "@/components/ui/DeckColor";
+import { KindDonut } from "@/components/dashboard/KindDonut";
 import type { StudyFocus } from "@/lib/db/queries/stats";
 
 /** Qué se está estudiando: distribución de cartas por tipo + mazos con actividad en los
  * últimos 7 días. Le da al usuario una foto rápida de dónde está parado. */
 export function StudyFocusPanel({ focus }: { focus: StudyFocus }) {
-  const total = CARD_KINDS.reduce((a, k) => a + focus.byKind[k], 0);
-
   return (
-    <div className="flex flex-col gap-5">
+    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
       <div>
         <p className="mb-2 text-sm font-semibold text-ink-soft">Tipos de carta</p>
-        {total === 0 ? (
-          <p className="text-ink-soft">Todavía no hay cartas.</p>
-        ) : (
-          <div className="flex flex-col gap-1.5">
-            {CARD_KINDS.filter((k) => focus.byKind[k] > 0).map((k) => (
-              <KindRow key={k} kind={k} count={focus.byKind[k]} total={total} />
-            ))}
-          </div>
-        )}
+        <KindDonut byKind={focus.byKind} />
       </div>
 
       <div>
@@ -46,23 +34,6 @@ export function StudyFocusPanel({ focus }: { focus: StudyFocus }) {
           </ul>
         )}
       </div>
-    </div>
-  );
-}
-
-function KindRow({ kind, count, total }: { kind: CardKind; count: number; total: number }) {
-  const style = KIND_STYLE[kind];
-  const pct = Math.round((count / total) * 100);
-  return (
-    <div className="flex items-center gap-2">
-      <span className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${style.soft} ${style.ink}`}>
-        <KindGlyph kind={kind} size={12} />
-        {KIND_LABELS[kind]}
-      </span>
-      <div className={`h-1.5 flex-1 overflow-hidden rounded-full bg-paper-2 ${style.ink}`}>
-        <div className="h-full rounded-full bg-current" style={{ width: `${pct}%` }} />
-      </div>
-      <span className="w-8 shrink-0 text-right text-sm tabular-nums text-ink-soft">{count}</span>
     </div>
   );
 }

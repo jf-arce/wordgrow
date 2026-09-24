@@ -1,10 +1,19 @@
+"use client";
+
+import { Tooltip as RechartsTooltip } from "recharts";
 import type { WeekActivity } from "@/lib/db/queries/stats";
+import { EvilBarChart } from "@/components/evilcharts/charts/recharts-bar-chart";
 
 /** Repasos de los últimos 7 días, para no repetir la racha del sidebar y darle algo
  * de contexto propio al dashboard: ¿vengo siendo constante o me colgué? */
 export function WeekActivityPanel({ week }: { week: WeekActivity }) {
-  const max = Math.max(1, ...week.map((d) => d.count));
   const total = week.reduce((a, d) => a + d.count, 0);
+
+  const data = week.map((d) => ({
+    letter: weekdayLetter(d.day),
+    dayLabel: weekdayName(d.day),
+    count: d.count,
+  }));
 
   return (
     <div className="flex h-full flex-col justify-center gap-2">
@@ -19,26 +28,37 @@ export function WeekActivityPanel({ week }: { week: WeekActivity }) {
           </>
         )}
       </p>
-      <div className="flex items-end justify-between gap-1.5">
-        {week.map((d) => {
-          const label = weekdayLetter(d.day);
-          const isToday = d.day === week[week.length - 1].day;
-          const height = d.count === 0 ? 4 : Math.round((d.count / max) * 28) + 4;
-          return (
-            <div
-              key={d.day}
-              title={`${weekdayName(d.day)}: ${d.count === 0 ? "sin repasos" : `${d.count} ${d.count === 1 ? "repaso" : "repasos"}`}`}
-              className="flex flex-1 cursor-default flex-col items-center gap-1"
-            >
-              <div
-                className={`w-full rounded-sm ${d.count > 0 ? "bg-gold-ink" : "bg-paper-2"}`}
-                style={{ height }}
-              />
-              <span className={`text-xs ${isToday ? "font-semibold text-ink" : "text-ink-soft"}`}>{label}</span>
-            </div>
-          );
-        })}
-      </div>
+      <EvilBarChart
+        data={data}
+        config={{ count: { label: "Repasos", colors: { light: ["var(--gold-ink)"] } } }}
+        className="h-28 w-full flex-none aspect-auto"
+        barRadius={4}
+      >
+        <EvilBarChart.XAxis
+          dataKey="dayLabel"
+          tickFormatter={(_, index) => data[index]?.letter ?? ""}
+          tick={{ fill: "var(--color-ink-soft)" }}
+        />
+        <RechartsTooltip cursor={false} content={<TooltipContent />} />
+        <EvilBarChart.Bar dataKey="count" variant="gradient" />
+      </EvilBarChart>
+    </div>
+  );
+}
+
+function TooltipContent({
+  active,
+  payload,
+}: {
+  active?: boolean;
+  payload?: { payload: { dayLabel: string; count: number } }[];
+}) {
+  if (!active || !payload?.length) return null;
+  const { dayLabel, count } = payload[0].payload;
+  const text = count === 0 ? "sin repasos" : `${count} ${count === 1 ? "repaso" : "repasos"}`;
+  return (
+    <div className="rounded-lg border border-border/50 bg-background px-2.5 py-1.5 text-xs shadow-xl">
+      <span className="font-medium">{dayLabel}</span>: {text}
     </div>
   );
 }
