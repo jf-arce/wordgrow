@@ -783,6 +783,25 @@ input:is([type="checkbox"], [type="radio"], [type="file"], [type="range"], [type
 @media (min-width: 480px) {
   .dashboard-deck-choice { min-height: 3rem; flex-direction: row; gap: 0.5rem; }
 }
+/* Menú inferior mobile: sin el flash gris nativo del navegador y con feedback táctil
+   propio (se achica un toque al presionar), como cualquier app mobile. */
+.nav-tab-link {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition: background-color 0.15s;
+}
+.nav-tab-link:active {
+  background: var(--color-base-200);
+}
+.nav-tab-icon {
+  transition: transform 0.1s;
+}
+.nav-tab-link:active .nav-tab-icon {
+  transform: scale(0.9);
+}
+@media (prefers-reduced-motion: reduce) {
+  .nav-tab-link:active .nav-tab-icon { transform: none; }
+}
 .card-detail-panel {
   width: min(56rem, calc(100vw - 2rem));
   max-width: none;
