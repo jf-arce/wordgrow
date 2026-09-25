@@ -1,17 +1,18 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { SESSION_COOKIE } from "@/lib/auth/constants";
+import { getSessionCookie } from "better-auth/cookies";
 
 const PUBLIC_ROUTES = ["/ingresar", "/registro"];
 
 /**
- * Chequeo optimista: sólo mira si existe la cookie de sesión, nunca consulta la base.
- * Proxy corre en cada request, incluidos los prefetch, así que una consulta acá sería
- * un costo por cada link que el usuario pasa a llevar el mouse por encima.
- * La verificación real (¿la sesión sigue siendo válida?) vive en la DAL (`lib/auth/dal.ts`).
+ * Chequeo optimista: sólo mira si existe la cookie de sesión (cache firmada de Better
+ * Auth), nunca consulta la base. Proxy corre en cada request, incluidos los prefetch,
+ * así que una consulta acá sería un costo por cada link que el usuario pasa a llevar el
+ * mouse por encima. La verificación real (¿la sesión sigue siendo válida?) vive en la
+ * DAL (`lib/auth/dal.ts`).
  */
 export default function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const hasSession = request.cookies.has(SESSION_COOKIE);
+  const hasSession = !!getSessionCookie(request);
   const isPublic = PUBLIC_ROUTES.some((r) => pathname === r);
 
   if (!hasSession && !isPublic) {
@@ -29,5 +30,5 @@ export default function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/|favicon\\.ico$|manifest\\.webmanifest$|sw\\.js$|icons/|brand/|icon\\.png$|apple-icon\\.png$).*)"],
+  matcher: ["/((?!api/auth/|_next/|favicon\\.ico$|manifest\\.webmanifest$|sw\\.js$|icons/|brand/|icon\\.png$|apple-icon\\.png$).*)"],
 };

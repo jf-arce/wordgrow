@@ -2,7 +2,7 @@ import "server-only";
 import { prisma } from "../index";
 import { backupSchema, type Backup } from "@/lib/schemas";
 
-export async function exportAll(userId: number): Promise<Backup> {
+export async function exportAll(userId: string): Promise<Backup> {
   const [decks, settings] = await Promise.all([
     prisma.deck.findMany({
       where: { userId },
@@ -80,7 +80,7 @@ export async function exportAll(userId: number): Promise<Backup> {
 }
 
 /** Reemplaza todo el contenido del usuario por el del backup. Todo o nada. */
-export async function importAll(userId: number, value: unknown): Promise<{ decks: number; cards: number }> {
+export async function importAll(userId: string, value: unknown): Promise<{ decks: number; cards: number }> {
   const parsed = backupSchema.safeParse(value);
   if (!parsed.success) throw new Error("El archivo no es un backup de WordGrow.");
   const backup = parsed.data;
@@ -90,7 +90,7 @@ export async function importAll(userId: number, value: unknown): Promise<{ decks
     await tx.deck.deleteMany({ where: { userId } });
 
     for (const deck of backup.decks) {
-      await tx.deck.create({
+      const createdDeck = await tx.deck.create({
         data: {
           userId,
           name: deck.name,
@@ -98,29 +98,47 @@ export async function importAll(userId: number, value: unknown): Promise<{ decks
           color: deck.color,
           lang: deck.lang,
           createdAt: new Date(deck.createdAt),
-          cards: {
-            create: deck.cards.map((card) => ({
-              term: card.term,
-              meaning: card.meaning,
-              example: card.example,
-              notes: card.notes,
-              kind: card.kind,
-              createdAt: new Date(card.createdAt),
-              progress: {
-                create: {
-                  stage: card.progress.stage,
-                  dueAt: new Date(card.progress.dueAt),
-                  reps: card.progress.reps,
-                  lapses: card.progress.lapses,
-                  lastReviewedAt: card.progress.lastReviewedAt ? new Date(card.progress.lastReviewedAt) : null,
-                },
-              },
-              reviews: {
-                create: card.reviews.map((r) => ({ mode: r.mode, correct: r.correct, grade: r.grade, responseMs: r.responseMs, reviewedAt: new Date(r.reviewedAt) })),
-              },
-            })),
-          },
         },
+      });
+
+      // Se insertan cartas, progreso y repasos en tandas separadas (en vez de un create
+      // anidado de varios niveles): con muchas cartas, el motor de Prisma 7 puede terminar
+      // insertando `card_progress` antes de que la tanda de `cards` haya terminado.
+      const createdCards = await tx.card.createManyAndReturn({
+        data: deck.cards.map((card) => ({
+          deckId: createdDeck.id,
+          term: card.term,
+          meaning: card.meaning,
+          example: card.example,
+          notes: card.notes,
+          kind: card.kind,
+          createdAt: new Date(card.createdAt),
+        })),
+        select: { id: true },
+      });
+
+      await tx.cardProgress.createMany({
+        data: deck.cards.map((card, i) => ({
+          cardId: createdCards[i].id,
+          stage: card.progress.stage,
+          dueAt: new Date(card.progress.dueAt),
+          reps: card.progress.reps,
+          lapses: card.progress.lapses,
+          lastReviewedAt: card.progress.lastReviewedAt ? new Date(card.progress.lastReviewedAt) : null,
+        })),
+      });
+
+      await tx.review.createMany({
+        data: deck.cards.flatMap((card, i) =>
+          card.reviews.map((r) => ({
+            cardId: createdCards[i].id,
+            mode: r.mode,
+            correct: r.correct,
+            grade: r.grade,
+            responseMs: r.responseMs,
+            reviewedAt: new Date(r.reviewedAt),
+          })),
+        ),
       });
     }
 
@@ -132,7 +150,7 @@ export async function importAll(userId: number, value: unknown): Promise<{ decks
   });
 }
 
-export async function resetAll(userId: number): Promise<void> {
+export async function resetAll(userId: string): Promise<void> {
   await prisma.$transaction([
     // Cascade se encarga de cartas, progreso y repasos.
     prisma.deck.deleteMany({ where: { userId } }),

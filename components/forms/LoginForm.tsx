@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { loginAction } from "@/app/actions/auth";
 import { loginSchema, type LoginInput } from "@/lib/schemas";
 import { Field } from "@/components/ui/Field";
+import { GoogleSignInButton } from "@/components/forms/GoogleSignInButton";
 
 export function LoginForm() {
   const {
@@ -38,6 +39,18 @@ export function LoginForm() {
       <button type="submit" className="btn btn-primary btn-large" disabled={isSubmitting}>
         Entrar
       </button>
+      <Divider />
+      <GoogleSignInButton callbackURL="/" />
     </form>
+  );
+}
+
+function Divider() {
+  return (
+    <div className="flex items-center gap-3 text-ink-soft">
+      <span className="h-px flex-1 bg-base-300" />
+      <span className="text-sm">o continuá con</span>
+      <span className="h-px flex-1 bg-base-300" />
+    </div>
   );
 }

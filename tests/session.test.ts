@@ -6,21 +6,20 @@ const { buildSession } = await import("@/lib/db/queries/study");
 const { openSession, findActiveSession, saveSessionProgress, finishSession, activeSessionSummary, answerSession, advanceSession, resolveStudyHref } = await import(
   "@/lib/db/queries/session"
 );
-const { createUser } = await import("@/lib/db/queries/auth");
-const { hashPassword } = await import("@/lib/auth/password");
+const { createTestUser } = await import("./helpers/user");
 const { SAMPLE_CARDS, SAMPLE_DECK } = await import("@/lib/sample-deck");
 const { getStudyPrefs, saveStudyPrefs } = await import("@/lib/db/queries/settings");
 const { prisma } = await import("@/lib/db/index");
 
-let userId: number;
+let userId: string;
 let deckId: number;
 
 beforeAll(async () => {
-  userId = await createUser({
+  userId = await createTestUser({
     firstName: "Katherine",
     lastName: "Johnson",
     email: "katherine-session@example.com",
-    passwordHash: hashPassword("correcthorse1"),
+    password: "correcthorse1",
   });
   deckId = await createDeck(userId, SAMPLE_DECK);
   await importCards(userId, deckId, SAMPLE_CARDS);
@@ -38,7 +37,7 @@ describe("sesión de estudio persistida", () => {
 
     await saveSessionProgress(userId, session.id, {
       queue,
-      firsts: [{ item: items[0], result: "correct", stageAfter: 1 }],
+      firsts: [{ item: queue[0], result: "correct", stageAfter: 1 }],
       position: 1,
     });
 
@@ -67,7 +66,7 @@ describe("sesión de estudio persistida", () => {
     const session = await openSession(userId, { deckIds: [], source: "all", mode: "mixed", limit: 3 }, queue);
     await saveSessionProgress(userId, session.id, {
       queue,
-      firsts: [{ item: items[0], result: "correct", stageAfter: 1 }],
+      firsts: [{ item: queue[0], result: "correct", stageAfter: 1 }],
       position: 1,
     });
     const summary = await activeSessionSummary(userId);
@@ -115,7 +114,7 @@ describe("respuestas de sesión", () => {
 
 describe("acceso principal a estudiar", () => {
   it("usa la configuración guardada aunque exista otra sesión pendiente", async () => {
-    const id = await createUser({ firstName: "Main", lastName: "Nav", email: "main-nav-session@example.com", passwordHash: hashPassword("correcthorse1") });
+    const id = await createTestUser({ firstName: "Main", lastName: "Nav", email: "main-nav-session@example.com", password: "correcthorse1" });
     const deck = await createDeck(id, { ...SAMPLE_DECK, name: "Selected" });
     await importCards(id, deck, SAMPLE_CARDS.slice(0, 2));
     await saveStudyPrefs(id, { deckScope: "selected", deckIds: [deck], source: "all", mode: "typed", limit: 10 });

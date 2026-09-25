@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { signupAction } from "@/app/actions/auth";
 import { signupSchema, type SignupInput } from "@/lib/schemas";
 import { Field } from "@/components/ui/Field";
+import { GoogleSignInButton } from "@/components/forms/GoogleSignInButton";
 
 export function SignupForm() {
   const {
@@ -61,6 +62,12 @@ export function SignupForm() {
       <button type="submit" className="btn btn-primary btn-large" disabled={isSubmitting}>
         Crear cuenta
       </button>
+      <div className="flex items-center gap-3 text-ink-soft">
+        <span className="h-px flex-1 bg-base-300" />
+        <span className="text-sm">o continuá con</span>
+        <span className="h-px flex-1 bg-base-300" />
+      </div>
+      <GoogleSignInButton callbackURL="/bienvenida" />
     </form>
   );
 }

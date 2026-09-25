@@ -48,7 +48,7 @@ function toState(row: { id: number; items: Prisma.JsonValue; answers: Prisma.Jso
 
 /** Busca una sesión sin terminar que coincida con esta selección, para retomarla tal cual quedó. */
 export async function findActiveSession(
-  userId: number,
+  userId: string,
   opts: { deckIds: number[]; source: StudySource; mode: StudyMode; limit: number },
 ): Promise<SessionState | null> {
   const row = await prisma.studySession.findFirst({
@@ -61,7 +61,7 @@ export async function findActiveSession(
 
 /** Abre una sesión nueva y devuelve su estado inicial (posición 0, sin respuestas). */
 export async function openSession(
-  userId: number,
+  userId: string,
   opts: { deckIds: number[]; source: StudySource; mode: StudyMode; limit: number },
   queue: QueueItem[],
 ): Promise<SessionState> {
@@ -81,7 +81,7 @@ export async function openSession(
 }
 
 export async function answerSession(
-  userId: number,
+  userId: string,
   sessionId: number,
   position: number,
   input: AnswerInput,
@@ -150,7 +150,7 @@ export async function answerSession(
   });
 }
 
-export async function advanceSession(userId: number, sessionId: number, position: number): Promise<{ position: number; finished: boolean } | null> {
+export async function advanceSession(userId: string, sessionId: number, position: number): Promise<{ position: number; finished: boolean } | null> {
   return prisma.$transaction(async (tx) => {
     const row = await tx.studySession.findFirst({
       where: { id: sessionId, userId, finishedAt: null },
@@ -167,7 +167,7 @@ export async function advanceSession(userId: number, sessionId: number, position
 }
 
 export async function saveSessionProgress(
-  userId: number,
+  userId: string,
   sessionId: number,
   state: { queue: QueueItem[]; firsts: FirstAttempt[]; position: number },
 ): Promise<void> {
@@ -179,7 +179,7 @@ export async function saveSessionProgress(
 
 /** Para el CTA "Seguí donde quedaste" en el inicio: la sesión sin terminar más reciente, si hay. */
 export async function activeSessionSummary(
-  userId: number,
+  userId: string,
 ): Promise<{ id: number; deckIds: number[]; source: StudySource; mode: StudyMode; limit: number; answered: number } | null> {
   const row = await prisma.studySession.findFirst({
     where: { userId, finishedAt: null },
@@ -191,7 +191,7 @@ export async function activeSessionSummary(
   return { id: row.id, deckIds: row.deckIds, source: row.source, mode: row.mode, limit: row.limit, answered };
 }
 
-export async function finishSession(userId: number, sessionId: number): Promise<void> {
+export async function finishSession(userId: string, sessionId: number): Promise<void> {
   await prisma.studySession.updateMany({ where: { id: sessionId, userId }, data: { finishedAt: new Date() } });
 }
 
@@ -201,7 +201,7 @@ export async function finishSession(userId: number, sessionId: number): Promise<
  * ninguna carta cargada. Centraliza el criterio para que distintos puntos de entrada
  * de la UI no terminen abriendo sesiones distintas entre sí.
  */
-export async function resolveStudyHref(userId: number): Promise<string> {
+export async function resolveStudyHref(userId: string): Promise<string> {
   const decks = await listDecks(userId);
   const hasCards = decks.some((d) => d.total > 0);
   if (!hasCards) return "/estudiar";

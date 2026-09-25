@@ -10,14 +10,14 @@ const DAY_MS = 86_400_000;
 
 type ReviewRow = { reviewedAt: Date; correct: boolean };
 
-async function userReviews(userId: number, since?: Date): Promise<ReviewRow[]> {
+async function userReviews(userId: string, since?: Date): Promise<ReviewRow[]> {
   return prisma.review.findMany({
     where: { card: { deck: { userId } }, ...(since ? { reviewedAt: { gte: since } } : {}) },
     select: { reviewedAt: true, correct: true },
   });
 }
 
-async function userProgress(userId: number): Promise<{ stage: number; dueAt: Date }[]> {
+async function userProgress(userId: string): Promise<{ stage: number; dueAt: Date }[]> {
   return prisma.cardProgress.findMany({
     where: { card: { deck: { userId } } },
     select: { stage: true, dueAt: true },
@@ -48,7 +48,7 @@ export type TodaySummary = {
   stages: number[];
 };
 
-export async function todaySummary(userId: number, now = Date.now()): Promise<TodaySummary> {
+export async function todaySummary(userId: string, now = Date.now()): Promise<TodaySummary> {
   const [reviews, progress] = await Promise.all([userReviews(userId), userProgress(userId)]);
   const activeDays = new Set(reviews.map((r) => dayKey(r.reviewedAt.getTime())));
   const today = dayKey(now);
@@ -81,7 +81,7 @@ export type StatsData = {
 
 export const HEATMAP_DAYS = 84;
 
-export async function statsData(userId: number, now = Date.now()): Promise<StatsData> {
+export async function statsData(userId: string, now = Date.now()): Promise<StatsData> {
   const [reviews, progress, deckRows, hardRows] = await Promise.all([
     userReviews(userId),
     userProgress(userId),
@@ -131,7 +131,7 @@ export async function statsData(userId: number, now = Date.now()): Promise<Stats
 export type WeekActivity = { day: string; count: number }[];
 
 /** Repasos de cada uno de los últimos 7 días, para la mini-tarjeta del dashboard. */
-export async function weekActivity(userId: number, now = Date.now()): Promise<WeekActivity> {
+export async function weekActivity(userId: string, now = Date.now()): Promise<WeekActivity> {
   const reviews = await userReviews(userId, new Date(now - 6 * DAY_MS));
   const perDay = toDayCounts(reviews);
   return Array.from({ length: 7 }, (_, i) => {
@@ -147,7 +147,7 @@ export type StudyFocus = {
   activeDecks: { id: number; name: string; color: string; due: number }[];
 };
 
-export async function studyFocus(userId: number, now = Date.now()): Promise<StudyFocus> {
+export async function studyFocus(userId: string, now = Date.now()): Promise<StudyFocus> {
   const [kindRows, activeDeckRows, decks] = await Promise.all([
     prisma.card.groupBy({ by: ["kind"], where: { deck: { userId } }, _count: { _all: true } }),
     prisma.review.findMany({

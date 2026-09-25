@@ -33,7 +33,7 @@ const sessionAnswerSchema = z.object({
 });
 export const currentAnswerSchema = sessionAnswerSchema.nullable();
 
-export const firstAttemptSchema = sessionAnswerSchema.extend({ item: quizItemSchema });
+export const firstAttemptSchema = sessionAnswerSchema.extend({ item: queueItemSchema });
 export const firstsSchema = z.array(firstAttemptSchema);
 
 export const DECK_COLORS = ["leaf", "sun", "lilac", "sky", "rose"] as const;
@@ -114,6 +114,12 @@ export const signupSchema = z
     path: ["confirmPassword"],
   });
 export type SignupInput = z.infer<typeof signupSchema>;
+
+export const profileSchema = z.object({
+  firstName: z.string().trim().min(1, "Escribí tu nombre").max(80),
+  lastName: z.string().trim().min(1, "Escribí tu apellido").max(80),
+});
+export type ProfileInput = z.infer<typeof profileSchema>;
 
 export const loginSchema = z.object({
   email: z.string().trim().toLowerCase().email("Poné un email válido").max(200),

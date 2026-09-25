@@ -1,73 +1,53 @@
 import { describe, expect, it } from "vitest";
+import { setCookieToHeader } from "better-auth/cookies";
 
-const { hashPassword, verifyPassword } = await import("@/lib/auth/password");
-const { createUser, getUserByEmail, createSession, getSession, deleteSession } = await import("@/lib/db/queries/auth");
+const { auth } = await import("@/lib/auth/server");
 
-describe("contraseñas", () => {
-  it("verifica una contraseña correcta y rechaza una incorrecta", () => {
-    const hash = hashPassword("correcthorse1");
-    expect(verifyPassword("correcthorse1", hash)).toBe(true);
-    expect(verifyPassword("wrongpassword1", hash)).toBe(false);
+async function signUp(email: string, password = "correcthorse1") {
+  return auth.api.signUpEmail({
+    body: { name: "Ada Lovelace", firstName: "Ada", lastName: "Lovelace", email, password },
+  });
+}
+
+describe("usuarios", () => {
+  it("crea un usuario y lo puede volver a encontrar por email, sin importar mayúsculas", async () => {
+    await signUp("Ada-Auth@Example.com");
+    const { user } = await auth.api.signInEmail({ body: { email: "ada-auth@example.com", password: "correcthorse1" } });
+    expect(user.email).toBe("ada-auth@example.com");
   });
 
-  it("nunca guarda la contraseña en texto plano", () => {
-    const hash = hashPassword("correcthorse1");
-    expect(hash).not.toContain("correcthorse1");
-    expect(hash.startsWith("scrypt$")).toBe(true);
-  });
-
-  it("dos hashes de la misma contraseña son distintos (salt aleatoria) pero ambos verifican", () => {
-    const a = hashPassword("correcthorse1");
-    const b = hashPassword("correcthorse1");
-    expect(a).not.toBe(b);
-    expect(verifyPassword("correcthorse1", a)).toBe(true);
-    expect(verifyPassword("correcthorse1", b)).toBe(true);
-  });
-
-  it("rechaza hashes mal formados sin tirar una excepción", () => {
-    expect(verifyPassword("cualquiera", "no-es-un-hash")).toBe(false);
+  it("no permite dos cuentas con el mismo email", async () => {
+    await signUp("dup-auth@example.com");
+    await expect(signUp("DUP-AUTH@example.com")).rejects.toThrow();
   });
 });
 
-describe("usuarios", () => {
-  it("crea un usuario y lo encuentra por email, sin importar mayúsculas", async () => {
-    await createUser({ firstName: "Ada", lastName: "Lovelace", email: "Ada-Auth@Example.com", passwordHash: hashPassword("x") });
-    expect((await getUserByEmail("ada-auth@example.com"))?.firstName).toBe("Ada");
-  });
-
-  it("no dos usuarios con el mismo email", async () => {
-    await createUser({ firstName: "Otra", lastName: "Ada", email: "dup-auth@example.com", passwordHash: hashPassword("y") });
-    await expect(createUser({ firstName: "Otra", lastName: "Ada", email: "DUP-AUTH@example.com", passwordHash: hashPassword("y") })).rejects.toThrow();
+describe("login", () => {
+  it("rechaza una contraseña incorrecta", async () => {
+    await signUp("wrongpass-auth@example.com", "correcthorse1");
+    await expect(
+      auth.api.signInEmail({ body: { email: "wrongpass-auth@example.com", password: "wrongpassword1" } }),
+    ).rejects.toThrow();
   });
 });
 
 describe("sesiones", () => {
-  it("una sesión válida devuelve el usuario; una vencida, no", async () => {
-    const userId = await createUser({
-      firstName: "Grace",
-      lastName: "Hopper",
-      email: "grace-auth@example.com",
-      passwordHash: hashPassword("z"),
+  it("cerrar sesión invalida el token", async () => {
+    await signUp("logout-auth@example.com");
+    const response = await auth.api.signInEmail({
+      body: { email: "logout-auth@example.com", password: "correcthorse1" },
+      asResponse: true,
     });
-    const now = Date.now();
-    await createSession({ id: "tok-viva", userId, expiresAt: now + 10_000 });
-    await createSession({ id: "tok-vencida", userId, expiresAt: now - 10_000 });
+    const signInHeaders = new Headers();
+    setCookieToHeader(signInHeaders)({ response });
 
-    expect((await getSession("tok-viva", now))?.userId).toBe(userId);
-    expect(await getSession("tok-vencida", now)).toBeNull();
-    expect(await getSession("no-existe", now)).toBeNull();
-  });
+    const active = await auth.api.getSession({ headers: signInHeaders });
+    expect(active?.user.email).toBe("logout-auth@example.com");
 
-  it("borrar la sesión la invalida", async () => {
-    const userId = await createUser({
-      firstName: "Margaret",
-      lastName: "Hamilton",
-      email: "margaret-auth@example.com",
-      passwordHash: hashPassword("w"),
-    });
-    await createSession({ id: "tok-a-borrar", userId, expiresAt: Date.now() + 10_000 });
-    expect((await getSession("tok-a-borrar"))?.userId).toBe(userId);
-    await deleteSession("tok-a-borrar");
-    expect(await getSession("tok-a-borrar")).toBeNull();
+    await auth.api.signOut({ headers: signInHeaders });
+    // disableCookieCache: chequeo autoritativo contra la DB, sin fiarse de la cache
+    // firmada de la cookie (que puede seguir siendo "válida" unos minutos más).
+    const afterSignOut = await auth.api.getSession({ headers: signInHeaders, query: { disableCookieCache: true } });
+    expect(afterSignOut).toBeNull();
   });
 });

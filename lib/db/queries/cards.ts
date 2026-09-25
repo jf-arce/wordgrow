@@ -23,7 +23,7 @@ export type CardRow = {
 
 type Filters = { q?: string; stage?: number; kind?: CardKind };
 
-export async function listCards(userId: number, deckId: number, filters: Filters = {}, now = Date.now()): Promise<CardRow[]> {
+export async function listCards(userId: string, deckId: number, filters: Filters = {}, now = Date.now()): Promise<CardRow[]> {
   if (!(await userOwnsDeck(userId, deckId))) return [];
   const rows = await prisma.card.findMany({
     where: {
@@ -62,15 +62,21 @@ export async function listCards(userId: number, deckId: number, filters: Filters
     }));
 }
 
-export async function existingTerms(userId: number, deckId: number): Promise<string[]> {
+export async function existingTerms(userId: string, deckId: number): Promise<string[]> {
   if (!(await userOwnsDeck(userId, deckId))) return [];
   const rows = await prisma.card.findMany({ where: { deckId }, select: { term: true } });
   return rows.map((r) => r.term);
 }
 
-async function insertCard(deckId: number, input: CardInput, createdAt: number, dueAt: number): Promise<number | null> {
+async function insertCard(
+  db: Prisma.TransactionClient | typeof prisma,
+  deckId: number,
+  input: CardInput,
+  createdAt: number,
+  dueAt: number,
+): Promise<number | null> {
   try {
-    const card = await prisma.card.create({
+    const card = await db.card.create({
       data: {
         deckId,
         term: input.term,
@@ -91,27 +97,36 @@ async function insertCard(deckId: number, input: CardInput, createdAt: number, d
 }
 
 /** Devuelve false si ya existe esa palabra en el mazo, o si el mazo no es del usuario. */
-export async function createCard(userId: number, deckId: number, input: CardInput): Promise<boolean> {
+export async function createCard(userId: string, deckId: number, input: CardInput): Promise<boolean> {
   if (!(await userOwnsDeck(userId, deckId))) return false;
   const now = Date.now();
-  return (await insertCard(deckId, input, now, now)) !== null;
+  return (await insertCard(prisma, deckId, input, now, now)) !== null;
 }
 
-export async function importCards(userId: number, deckId: number, rows: CardInput[]): Promise<{ added: number; skipped: number }> {
+export async function importCards(userId: string, deckId: number, rows: CardInput[]): Promise<{ added: number; skipped: number }> {
   if (!(await userOwnsDeck(userId, deckId))) return { added: 0, skipped: rows.length };
   const now = Date.now();
-  return prisma.$transaction(async () => {
-    let added = 0;
-    for (const [i, row] of rows.entries()) {
-      // La lista se muestra de la más nueva a la más vieja: la primera fila importada queda arriba.
-      if ((await insertCard(deckId, row, now + (rows.length - i), now)) !== null) added++;
-    }
-    return { added, skipped: rows.length - added };
-  });
+  return prisma.$transaction(
+    async (tx) => {
+      // Se descartan duplicados antes de insertar: un choque con la unique constraint
+      // dejaría la transacción de Postgres abortada para el resto de las filas.
+      const terms = new Set((await tx.card.findMany({ where: { deckId }, select: { term: true } })).map((c) => c.term));
+      let added = 0;
+      for (const [i, row] of rows.entries()) {
+        if (terms.has(row.term)) continue;
+        terms.add(row.term);
+        // La lista se muestra de la más nueva a la más vieja: la primera fila importada queda arriba.
+        await insertCard(tx, deckId, row, now + (rows.length - i), now);
+        added++;
+      }
+      return { added, skipped: rows.length - added };
+    },
+    { timeout: 30_000 },
+  );
 }
 
 /** Reparte los rangos del mazo de ejemplo sin modificar cartas ya repasadas. */
-export async function seedSampleCardStages(userId: number, deckId: number): Promise<number> {
+export async function seedSampleCardStages(userId: string, deckId: number): Promise<number> {
   if (!(await userOwnsDeck(userId, deckId))) return 0;
   const now = Date.now();
   return prisma.$transaction(async (tx) => {
@@ -136,7 +151,7 @@ export async function seedSampleCardStages(userId: number, deckId: number): Prom
 }
 
 /** Devuelve false si el nuevo término choca con otra tarjeta del mazo, o si la tarjeta no es del usuario. */
-export async function updateCard(userId: number, id: number, input: CardInput): Promise<boolean> {
+export async function updateCard(userId: string, id: number, input: CardInput): Promise<boolean> {
   if (!(await userOwnsCard(userId, id))) return false;
   try {
     await prisma.card.update({
@@ -150,12 +165,12 @@ export async function updateCard(userId: number, id: number, input: CardInput): 
   }
 }
 
-export async function deleteCard(userId: number, id: number): Promise<void> {
+export async function deleteCard(userId: string, id: number): Promise<void> {
   if (!(await userOwnsCard(userId, id))) return;
   await prisma.card.delete({ where: { id } });
 }
 
-export async function resetCardProgress(userId: number, id: number): Promise<void> {
+export async function resetCardProgress(userId: string, id: number): Promise<void> {
   if (!(await userOwnsCard(userId, id))) return;
   await prisma.cardProgress.update({
     where: { cardId: id },

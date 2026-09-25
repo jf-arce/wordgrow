@@ -73,7 +73,7 @@ export default async function TodayPage() {
             fila) en vez de mantener la altura doble pensada para al lado de Racha/Meta. */}
         <section
           aria-labelledby="hoy-titulo"
-          className="surface col-span-2 row-span-2 flex flex-col justify-center gap-6 p-5 sm:p-8 md:col-span-3 md:row-span-1 lg:col-span-2 lg:row-span-2"
+          className={`surface col-span-2 flex flex-col justify-center gap-6 p-5 sm:p-8 md:col-span-3 ${empty ? "mx-auto w-full max-w-2xl items-center text-center lg:col-span-4" : "row-span-2 md:row-span-1 lg:col-span-2 lg:row-span-2"}`}
         >
           {empty ? (
             <>
@@ -84,11 +84,11 @@ export default async function TodayPage() {
                 Creá un mazo con el vocabulario de tu clase (palabras, frases, phrasal verbs). WordGrow te las
                 pregunta y te las vuelve a traer justo antes de que las olvides.
               </p>
-              <div className="flex flex-wrap items-start gap-3">
-                <Link href="/mazos/nuevo" className="btn btn-primary btn-lg">
+              <div className="flex w-full flex-col justify-center gap-3 sm:flex-row">
+                <Link href="/mazos/nuevo" className="btn btn-primary btn-lg w-full sm:w-64">
                   Crear mi primer mazo
                 </Link>
-                <SampleDeckButton />
+                <SampleDeckButton className="btn btn-quiet btn-lg w-full sm:w-64" />
               </div>
             </>
           ) : available > 0 ? (

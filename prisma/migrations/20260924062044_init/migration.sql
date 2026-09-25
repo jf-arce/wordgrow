@@ -24,12 +24,15 @@ CREATE TYPE "DeckScope" AS ENUM ('all', 'selected');
 
 -- CreateTable
 CREATE TABLE "users" (
-    "id" SERIAL NOT NULL,
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
     "first_name" TEXT NOT NULL,
     "last_name" TEXT NOT NULL,
     "email" TEXT NOT NULL,
-    "password_hash" TEXT NOT NULL,
+    "email_verified" BOOLEAN NOT NULL DEFAULT false,
+    "image" TEXT,
     "created_at" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMPTZ(3) NOT NULL,
 
     CONSTRAINT "users_pkey" PRIMARY KEY ("id")
 );
@@ -37,18 +40,52 @@ CREATE TABLE "users" (
 -- CreateTable
 CREATE TABLE "sessions" (
     "id" TEXT NOT NULL,
-    "user_id" INTEGER NOT NULL,
-    "created_at" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "user_id" TEXT NOT NULL,
+    "token" TEXT NOT NULL,
     "expires_at" TIMESTAMPTZ(3) NOT NULL,
-    "last_seen_at" TIMESTAMPTZ(3) NOT NULL,
+    "ip_address" TEXT,
+    "user_agent" TEXT,
+    "created_at" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMPTZ(3) NOT NULL,
 
     CONSTRAINT "sessions_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
+CREATE TABLE "accounts" (
+    "id" TEXT NOT NULL,
+    "user_id" TEXT NOT NULL,
+    "account_id" TEXT NOT NULL,
+    "provider_id" TEXT NOT NULL,
+    "access_token" TEXT,
+    "refresh_token" TEXT,
+    "id_token" TEXT,
+    "access_token_expires_at" TIMESTAMPTZ(3),
+    "refresh_token_expires_at" TIMESTAMPTZ(3),
+    "scope" TEXT,
+    "password" TEXT,
+    "created_at" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMPTZ(3) NOT NULL,
+
+    CONSTRAINT "accounts_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "verifications" (
+    "id" TEXT NOT NULL,
+    "identifier" TEXT NOT NULL,
+    "value" TEXT NOT NULL,
+    "expires_at" TIMESTAMPTZ(3) NOT NULL,
+    "created_at" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMPTZ(3) NOT NULL,
+
+    CONSTRAINT "verifications_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "decks" (
     "id" SERIAL NOT NULL,
-    "user_id" INTEGER NOT NULL,
+    "user_id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "description" TEXT NOT NULL DEFAULT '',
     "color" TEXT NOT NULL DEFAULT 'leaf',
@@ -100,7 +137,7 @@ CREATE TABLE "reviews" (
 
 -- CreateTable
 CREATE TABLE "user_settings" (
-    "user_id" INTEGER NOT NULL,
+    "user_id" TEXT NOT NULL,
     "daily_goal" INTEGER NOT NULL DEFAULT 20,
     "tts_rate" DOUBLE PRECISION NOT NULL DEFAULT 0.9,
     "autoplay_audio" BOOLEAN NOT NULL DEFAULT false,
@@ -112,8 +149,8 @@ CREATE TABLE "user_settings" (
     "study_deck_scope" "DeckScope" NOT NULL DEFAULT 'all',
     "study_deck_ids" INTEGER[] DEFAULT ARRAY[]::INTEGER[],
     "reminder_enabled" BOOLEAN NOT NULL DEFAULT false,
-    "reminder_days" INTEGER[] DEFAULT ARRAY[]::INTEGER[],
-    "reminder_time" TEXT NOT NULL DEFAULT '20:00',
+    "reminder_days" INTEGER[] DEFAULT ARRAY[1, 2, 3, 4, 5]::INTEGER[],
+    "reminder_time" TEXT NOT NULL DEFAULT '19:00',
 
     CONSTRAINT "user_settings_pkey" PRIMARY KEY ("user_id")
 );
@@ -121,7 +158,7 @@ CREATE TABLE "user_settings" (
 -- CreateTable
 CREATE TABLE "study_sessions" (
     "id" SERIAL NOT NULL,
-    "user_id" INTEGER NOT NULL,
+    "user_id" TEXT NOT NULL,
     "deck_ids" INTEGER[],
     "source" "StudySource" NOT NULL,
     "mode" "StudyMode" NOT NULL,
@@ -141,10 +178,22 @@ CREATE TABLE "study_sessions" (
 CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "sessions_token_key" ON "sessions"("token");
+
+-- CreateIndex
 CREATE INDEX "sessions_user_id_idx" ON "sessions"("user_id");
 
 -- CreateIndex
 CREATE INDEX "sessions_expires_at_idx" ON "sessions"("expires_at");
+
+-- CreateIndex
+CREATE INDEX "accounts_user_id_idx" ON "accounts"("user_id");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "accounts_provider_id_account_id_key" ON "accounts"("provider_id", "account_id");
+
+-- CreateIndex
+CREATE INDEX "verifications_identifier_idx" ON "verifications"("identifier");
 
 -- CreateIndex
 CREATE INDEX "decks_user_id_created_at_idx" ON "decks"("user_id", "created_at");
@@ -171,6 +220,9 @@ CREATE INDEX "study_sessions_user_id_finished_at_idx" ON "study_sessions"("user_
 ALTER TABLE "sessions" ADD CONSTRAINT "sessions_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "accounts" ADD CONSTRAINT "accounts_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "decks" ADD CONSTRAINT "decks_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -187,4 +239,3 @@ ALTER TABLE "user_settings" ADD CONSTRAINT "user_settings_user_id_fkey" FOREIGN 
 
 -- AddForeignKey
 ALTER TABLE "study_sessions" ADD CONSTRAINT "study_sessions_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-

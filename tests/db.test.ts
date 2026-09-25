@@ -6,8 +6,7 @@ const { buildSession, recordReview, countSources } = await import("@/lib/db/quer
 const { statsData, todaySummary } = await import("@/lib/db/queries/stats");
 const { exportAll, importAll, resetAll } = await import("@/lib/db/queries/backup");
 const { getSettings, saveSettings } = await import("@/lib/db/queries/settings");
-const { createUser } = await import("@/lib/db/queries/auth");
-const { hashPassword } = await import("@/lib/auth/password");
+const { createTestUser } = await import("./helpers/user");
 const { SAMPLE_CARDS, SAMPLE_DECK } = await import("@/lib/sample-deck");
 
 const card = (term: string, meaning = `def ${term}`) => ({
@@ -18,15 +17,15 @@ const card = (term: string, meaning = `def ${term}`) => ({
   kind: "word" as const,
 });
 
-let userId: number;
+let userId: string;
 let deckId: number;
 
 beforeAll(async () => {
-  userId = await createUser({
+  userId = await createTestUser({
     firstName: "Ada",
     lastName: "Lovelace",
     email: "ada-db@example.com",
-    passwordHash: hashPassword("correcthorse1"),
+    password: "correcthorse1",
   });
   deckId = await createDeck(userId, SAMPLE_DECK);
   await importCards(userId, deckId, SAMPLE_CARDS);
@@ -61,11 +60,11 @@ describe("mazos y tarjetas", () => {
 
 describe("rangos del mazo de ejemplo", () => {
   it("muestra los cinco rangos y conserva las cartas ya repasadas", async () => {
-    const sampleUserId = await createUser({
+    const sampleUserId = await createTestUser({
       firstName: "Ejemplo",
       lastName: "Prueba",
       email: "rangos-db@example.com",
-      passwordHash: hashPassword("correcthorse3"),
+      password: "correcthorse3",
     });
     const sampleDeckId = await createDeck(sampleUserId, SAMPLE_DECK);
     await importCards(sampleUserId, sampleDeckId, SAMPLE_CARDS);
@@ -79,7 +78,9 @@ describe("rangos del mazo de ejemplo", () => {
     expect(cards.find((c) => c.id === reviewedCard.id)).toEqual(before);
     expect(await seedSampleCardStages(sampleUserId, sampleDeckId)).toBe(0);
     expect(await seedSampleCardStages(userId, sampleDeckId)).toBe(0);
-  });
+    // Este test hace ~25 inserts + ~25 updates uno por uno contra el branch de test de
+    // Neon: el testTimeout global (20s) no siempre alcanza sumado a crear el usuario.
+  }, 45_000);
 });
 
 describe("sesión de estudio y repasos", () => {
@@ -110,11 +111,11 @@ describe("sesión de estudio y repasos", () => {
 
   it("con varios mazos, sólo trae cartas de esos mazos", async () => {
     // Usuario aparte para no contaminar los conteos que usan los tests de más abajo.
-    const otherUserId = await createUser({
+    const otherUserId = await createTestUser({
       firstName: "Margaret",
       lastName: "Hamilton",
       email: "margaret-db@example.com",
-      passwordHash: hashPassword("correcthorse1"),
+      password: "correcthorse1",
     });
     const deckA = await createDeck(otherUserId, SAMPLE_DECK);
     const deckB = await createDeck(otherUserId, { ...SAMPLE_DECK, name: "Otro mazo" });
@@ -188,11 +189,11 @@ describe("ajustes y backup", () => {
 
 describe("aislamiento entre usuarios", () => {
   it("un usuario no ve ni puede tocar los mazos de otro", async () => {
-    const otherId = await createUser({
+    const otherId = await createTestUser({
       firstName: "Grace",
       lastName: "Hopper",
       email: "grace-db@example.com",
-      passwordHash: hashPassword("correcthorse2"),
+      password: "correcthorse2",
     });
     const myDeck = await createDeck(userId, { name: "Mío", description: "", color: "leaf", lang: "en-US" });
     expect(await listDecks(otherId)).toHaveLength(0);

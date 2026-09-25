@@ -5,6 +5,7 @@ import { getSettings } from "@/lib/db/queries/settings";
 import { todaySummaryCached } from "@/lib/db/queries/stats";
 import { requireUser } from "@/lib/auth/dal";
 import { logoutAction } from "@/app/actions/auth";
+import { UserMenu } from "@/components/shell/UserMenu";
 
 /** Racha + meta del día + usuario/logout del sidebar. Aparte de `AppLayout` para que el
  * shell (Wordmark, nav) no espere a esta consulta antes de mostrarse. */
@@ -19,17 +20,7 @@ export async function SidebarFooter() {
         {today.streak === 0 ? "Sin racha" : `${today.streak} ${today.streak === 1 ? "día" : "días"} seguidos`}
       </div>
       <GoalRing value={today.reviewedToday} goal={dailyGoal} />
-      <div className="flex items-center justify-between gap-2">
-        <p className="min-w-0 truncate text-sm font-semibold" title={`${user.firstName} ${user.lastName}`}>
-          {user.firstName}
-        </p>
-        <form action={logoutAction}>
-          <button type="submit" className="btn btn-quiet btn-small" aria-label="Cerrar sesión">
-            <LogOut size={14} aria-hidden />
-            Salir
-          </button>
-        </form>
-      </div>
+      <UserMenu firstName={user.firstName} lastName={user.lastName} email={user.email} image={user.image} />
     </>
   );
 }

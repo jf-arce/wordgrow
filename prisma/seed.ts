@@ -10,13 +10,30 @@
 import "dotenv/config";
 import { PrismaClient, Prisma } from "@/lib/generated/prisma/client";
 import { PrismaNeon } from "@prisma/adapter-neon";
-import { hashPassword } from "@/lib/auth/hash";
+import { betterAuth } from "better-auth";
+import { prismaAdapter } from "better-auth/adapters/prisma";
 import { stageInfo } from "@/lib/srs";
 import type { CardKind, QuizMode } from "@/lib/quiz";
 
 const connectionString = process.env.DIRECT_URL ?? process.env.DATABASE_URL;
 if (!connectionString) throw new Error("Falta DIRECT_URL o DATABASE_URL para correr el seed.");
 const prisma = new PrismaClient({ adapter: new PrismaNeon({ connectionString }) });
+
+// Instancia mínima de Better Auth sólo para crear usuarios de prueba con contraseña
+// hasheada correctamente; no monta rutas ni corre dentro de Next.
+const seedAuth = betterAuth({
+  database: prismaAdapter(prisma, { provider: "postgresql" }),
+  secret: process.env.BETTER_AUTH_SECRET ?? "seed-only-secret",
+  emailAndPassword: { enabled: true },
+  user: { additionalFields: { firstName: { type: "string" }, lastName: { type: "string" } } },
+});
+
+async function createUser(input: { firstName: string; lastName: string; email: string; password: string }): Promise<string> {
+  const { user } = await seedAuth.api.signUpEmail({
+    body: { name: `${input.firstName} ${input.lastName}`, firstName: input.firstName, lastName: input.lastName, email: input.email, password: input.password },
+  });
+  return user.id;
+}
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const now = Date.now();
@@ -173,23 +190,16 @@ async function seedDemoUser() {
   const email = "demo@wordgrow.dev";
   await deleteIfExists(email);
 
-  const user = await prisma.user.create({
+  const userId = await createUser({ firstName: "Ada", lastName: "Demo", email, password: "wordgrow123" });
+  await prisma.userSettings.create({
     data: {
-      firstName: "Ada",
-      lastName: "Demo",
-      email,
-      passwordHash: hashPassword("wordgrow123"),
-      settings: {
-        create: {
-          dailyGoal: 15,
-          reminderEnabled: true,
-          reminderDays: [1, 2, 3, 4, 5],
-          reminderTime: "19:30",
-          studyDeckScope: "all",
-        },
-      },
+      userId,
+      dailyGoal: 15,
+      reminderEnabled: true,
+      reminderDays: [1, 2, 3, 4, 5],
+      reminderTime: "19:30",
+      studyDeckScope: "all",
     },
-    select: { id: true },
   });
 
   // Todas las cartas creadas, para armar la sesión a medias y elegir mazos "seleccionados" al final.
@@ -198,7 +208,7 @@ async function seedDemoUser() {
 
   for (const deckSpec of DECKS) {
     const deck = await prisma.deck.create({
-      data: { userId: user.id, name: deckSpec.name, description: deckSpec.description, color: deckSpec.color, lang: deckSpec.lang },
+      data: { userId, name: deckSpec.name, description: deckSpec.description, color: deckSpec.color, lang: deckSpec.lang },
       select: { id: true },
     });
     deckIds.push(deck.id);
@@ -262,7 +272,7 @@ async function seedDemoUser() {
   await prisma.review.createMany({ data: reviews });
 
   // Mazos "seleccionados" para las preferencias de estudio: los dos primeros.
-  await prisma.userSettings.update({ where: { userId: user.id }, data: { studyDeckScope: "selected", studyDeckIds: deckIds.slice(0, 2) } });
+  await prisma.userSettings.update({ where: { userId }, data: { studyDeckScope: "selected", studyDeckIds: deckIds.slice(0, 2) } });
 
   // Una sesión sin terminar, para probar "Seguí donde quedaste".
   const queueCards = allCards.slice(0, 6);
@@ -281,7 +291,7 @@ async function seedDemoUser() {
   const answered = queue.slice(0, 2).map((item) => ({ item, result: "correct" as const, stageAfter: 1 }));
   await prisma.studySession.create({
     data: {
-      userId: user.id,
+      userId,
       deckIds: [],
       source: "due",
       mode: "mixed",
@@ -298,15 +308,8 @@ async function seedDemoUser() {
 async function seedFreshUser() {
   const email = "nuevo@wordgrow.dev";
   await deleteIfExists(email);
-  await prisma.user.create({
-    data: {
-      firstName: "Nuevo",
-      lastName: "Usuario",
-      email,
-      passwordHash: hashPassword("wordgrow123"),
-      settings: { create: {} },
-    },
-  });
+  const userId = await createUser({ firstName: "Nuevo", lastName: "Usuario", email, password: "wordgrow123" });
+  await prisma.userSettings.create({ data: { userId } });
   console.log(`✔ ${email} — sin mazos, para probar la bienvenida.`);
 }
 

@@ -23,7 +23,7 @@ type Row = {
   reps: number;
 };
 
-async function loadRows(userId: number): Promise<Row[]> {
+async function loadRows(userId: string): Promise<Row[]> {
   const cards = await prisma.card.findMany({
     where: { deck: { userId } },
     select: {
@@ -76,7 +76,7 @@ export type SessionOptions = {
 };
 
 /** Cuántas tarjetas hay disponibles para cada fuente (para la pantalla de configuración). */
-export async function countSources(userId: number, deckIds: number[] = [], now = Date.now()): Promise<Record<StudySource, number>> {
+export async function countSources(userId: string, deckIds: number[] = [], now = Date.now()): Promise<Record<StudySource, number>> {
   const rows = await loadRows(userId);
   const scoped = deckIds.length ? rows.filter((r) => deckIds.includes(r.deckId)) : rows;
   return {
@@ -89,7 +89,7 @@ export async function countSources(userId: number, deckIds: number[] = [], now =
 
 /** Igual que `countSources`, pero desglosado por mazo: para que el selector de mazos
  * muestre conteos por fuente sin un round-trip al servidor por cada click. */
-export async function countSourcesByDeck(userId: number, now = Date.now()): Promise<Record<number, Record<StudySource, number>>> {
+export async function countSourcesByDeck(userId: string, now = Date.now()): Promise<Record<number, Record<StudySource, number>>> {
   const rows = await loadRows(userId);
   const out: Record<number, Record<StudySource, number>> = {};
   for (const r of rows) {
@@ -102,7 +102,7 @@ export async function countSourcesByDeck(userId: number, now = Date.now()): Prom
   return out;
 }
 
-export async function buildSession(userId: number, options: SessionOptions, now = Date.now()): Promise<QuizItem[]> {
+export async function buildSession(userId: string, options: SessionOptions, now = Date.now()): Promise<QuizItem[]> {
   const all = await loadRows(userId);
   const scoped = options.deckIds.length ? all.filter((r) => options.deckIds.includes(r.deckId)) : all;
 
@@ -129,7 +129,7 @@ export async function buildSession(userId: number, options: SessionOptions, now 
 }
 
 export async function recordReview(
-  userId: number,
+  userId: string,
   input: { cardId: number; mode: QuizMode; result: Result; responseMs: number },
 ): Promise<{ stage: number; dueAt: number } | null> {
   if (!(await userOwnsCard(userId, input.cardId))) return null;

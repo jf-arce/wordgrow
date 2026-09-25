@@ -16,7 +16,7 @@ export type DeckSummary = {
   stages: number[];
 };
 
-export async function listDecks(userId: number, now = Date.now()): Promise<DeckSummary[]> {
+export async function listDecks(userId: string, now = Date.now()): Promise<DeckSummary[]> {
   const decks = await prisma.deck.findMany({
     where: { userId },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
@@ -54,24 +54,24 @@ export async function listDecks(userId: number, now = Date.now()): Promise<DeckS
   });
 }
 
-export async function getDeck(userId: number, id: number): Promise<DeckSummary | null> {
+export async function getDeck(userId: string, id: number): Promise<DeckSummary | null> {
   const decks = await listDecks(userId);
   return decks.find((d) => d.id === id) ?? null;
 }
 
 /** Verifica que el mazo exista y sea del usuario, para no dejar tocar tarjetas ajenas por id. */
-export async function userOwnsDeck(userId: number, deckId: number): Promise<boolean> {
+export async function userOwnsDeck(userId: string, deckId: number): Promise<boolean> {
   const count = await prisma.deck.count({ where: { id: deckId, userId } });
   return count > 0;
 }
 
 /** Igual que `userOwnsDeck`, pero a partir del id de una tarjeta (para acciones sobre cartas sueltas). */
-export async function userOwnsCard(userId: number, cardId: number): Promise<boolean> {
+export async function userOwnsCard(userId: string, cardId: number): Promise<boolean> {
   const count = await prisma.card.count({ where: { id: cardId, deck: { userId } } });
   return count > 0;
 }
 
-export async function createDeck(userId: number, input: DeckInput): Promise<number> {
+export async function createDeck(userId: string, input: DeckInput): Promise<number> {
   const deck = await prisma.deck.create({
     data: { userId, name: input.name, description: input.description, color: input.color, lang: input.lang },
     select: { id: true },
@@ -79,13 +79,13 @@ export async function createDeck(userId: number, input: DeckInput): Promise<numb
   return deck.id;
 }
 
-export async function updateDeck(userId: number, id: number, input: DeckInput): Promise<void> {
+export async function updateDeck(userId: string, id: number, input: DeckInput): Promise<void> {
   await prisma.deck.updateMany({
     where: { id, userId },
     data: { name: input.name, description: input.description, color: input.color, lang: input.lang },
   });
 }
 
-export async function deleteDeck(userId: number, id: number): Promise<void> {
+export async function deleteDeck(userId: string, id: number): Promise<void> {
   await prisma.deck.deleteMany({ where: { id, userId } });
 }

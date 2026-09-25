@@ -45,11 +45,13 @@ export function ImportForm({ deckId, existing }: { deckId: number; existing: str
       <details className="surface p-4 sm:p-5">
         <summary className="cursor-pointer font-semibold">¿Qué formato tiene que tener la lista?</summary>
         <div className="mt-3 space-y-2 text-ink-soft">
-          <p>Una palabra por línea, con el significado al lado. Sirve cualquiera de estos separadores: tabulación (pegado desde una planilla), punto y coma, coma, “ - ” o “ = ”.</p>
+          <p>Una carta por línea. La palabra y el significado son obligatorios; después podés agregar ejemplo, notas y tipo, en ese orden. Separá las columnas con tabulación, punto y coma, coma, “ - ” o “ = ”.</p>
           <pre className="overflow-x-auto rounded-xl bg-paper-2 p-3 text-sm text-ink">{`give up - rendirse
 look after; cuidar; She looks after her brother.
-break the ice = romper el hielo`}</pre>
-          <p>Columnas opcionales, en este orden: palabra, significado, ejemplo, notas, tipo. Si la primera fila dice “term” o “palabra”, se ignora.</p>
+break the ice = romper el hielo
+give in; ceder; Don't give in.; ; phrasal_verb`}</pre>
+          <p>Para indicar el tipo, usá <code>word</code>, <code>phrasal_verb</code>, <code>collocation</code>, <code>sentence</code> u <code>other</code>. Si lo dejás vacío o el valor no coincide, se deduce de la palabra o frase. Revisá el tipo asignado en la vista previa.</p>
+          <p>Podés pegar la lista o subir un archivo CSV, TSV o TXT de hasta 2 MB. Se omiten las palabras repetidas en la lista o en el mazo, y podés importar hasta 2000 cartas por vez. Si la primera columna de la primera fila dice “term” o “palabra”, esa fila se ignora.</p>
         </div>
       </details>
 
